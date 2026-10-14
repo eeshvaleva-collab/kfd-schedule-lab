@@ -1,7 +1,6 @@
 package schedule
 
 import java.time.LocalDate
-import java.time.format.DateTimeParseException
 
 sealed interface Session {
     val date: LocalDate
@@ -32,7 +31,7 @@ sealed interface ActiveSession : Session {
     }
 }
 
-abstract class BaseEvent : Session{
+abstract class BaseSession : Session{
     override fun toString(): String {
         val className = javaClass.simpleName
         return "$className(date=$date, topic='$topic')"
@@ -47,7 +46,7 @@ abstract class BaseEvent : Session{
     override fun hashCode(): Int = 31 * date.hashCode() + topic.hashCode()
 }
 
-abstract class BaseActiveEvent : ActiveSession{
+abstract class BaseActiveSession : ActiveSession{
     override fun toString(): String {
         val className = javaClass.simpleName
         return "$className(date=$date, topic='$topic', location='$location', teachers=$teachers)"
@@ -74,7 +73,7 @@ class Lecture private constructor(
     override val topic: String,
     override val location: String,
     override val teachers: List<String>
-) : BaseActiveEvent() {
+) : BaseActiveSession() {
     companion object {
         fun create(date: LocalDate, topic: String, location: String, teachers: List<String>): Lecture {
             val protectedTeachers : List<String> = java.util.List.copyOf(teachers) as List<String>
@@ -90,7 +89,7 @@ class Practice private constructor(
     override val topic: String,
     override val location: String,
     override val teachers: List<String>
-) : BaseActiveEvent() {
+) : BaseActiveSession() {
     companion object {
         fun create(date: LocalDate, topic: String, location: String, teachers: List<String>): Practice {
             val protectedTeachers : List<String> = java.util.List.copyOf(teachers) as List<String>
@@ -105,7 +104,7 @@ class Exam private constructor(
     override val topic: String,
     override val location: String,
     override val teachers: List<String>
-) : BaseActiveEvent() {
+) : BaseActiveSession() {
     companion object {
         fun create(date: LocalDate, topic: String, location: String, teachers: List<String>): Exam {
             val protectedTeachers : List<String> = java.util.List.copyOf(teachers) as List<String>
@@ -119,7 +118,7 @@ class Exam private constructor(
 class Cancellation private constructor(
     override val date: LocalDate,
     override val topic: String
-) : BaseEvent() {
+) : BaseSession() {
     companion object {
         fun create(date: LocalDate, topic: String): Cancellation {
             Session.checkCommonConstraints(date, topic)
