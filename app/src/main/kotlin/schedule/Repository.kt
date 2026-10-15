@@ -6,7 +6,7 @@ interface SessionRepository {
     fun all(): List<Session>
 }
 
-class SessionRepositoryImpl() : SessionRepository {
+class SessionRepositoryImpl : SessionRepository {
     private val sessions = mutableListOf<Session>()
 
     override fun add(session: Session){
@@ -20,38 +20,35 @@ class SessionRepositoryImpl() : SessionRepository {
     }
 }
 
-@JvmInline
-value class OperationType private constructor(val value: String) {
-    companion object {
-        val ADD = OperationType("add")
-        val ADD_ALL = OperationType("addAll")
-    }
-}
+enum class OperationType { ADD, ADD_ALL }
 
 data class AuditEvent(
     val operation: OperationType,
     val count : Int
 )
 data class Stats(
-    var sessions: Int = 0,
-    var added: Int = 0,
-    var auditEvents: Int = 0
+    val sessions: Int = 0,
+    val added: Int = 0,
+    val auditEvents: Int = 0
 )
 
 class AuditedSessionRepository(
     private val delegate: SessionRepository
 ) : SessionRepository by delegate {
-    val stats = Stats()
+    private var currentStats = Stats()
+    val stats: Stats
+        get() = currentStats
     var auditLog: List<AuditEvent> = emptyList()
         private set
 
 
     override fun add(session: Session) {
         delegate.add(session)
-
-        stats.sessions += 1
-        stats.added += 1
-        stats.auditEvents += 1
+        currentStats = currentStats.copy(
+            sessions = currentStats.sessions + 1,
+            added = currentStats.added + 1,
+            auditEvents = currentStats.auditEvents + 1
+        )
 
         val updatedLog = mutableListOf<AuditEvent>().apply {
             addAll(auditLog)
@@ -64,10 +61,11 @@ class AuditedSessionRepository(
         this.delegate.addAll(sessions)
 
         val count = sessions.size
-
-        stats.sessions += count
-        stats.added += count
-        stats.auditEvents += 1
+        currentStats = currentStats.copy(
+            sessions = currentStats.sessions + count,
+            added = currentStats.added + count,
+            auditEvents = currentStats.auditEvents + 1
+        )
 
         val updatedLog = mutableListOf<AuditEvent>().apply {
             addAll(auditLog)
@@ -75,4 +73,8 @@ class AuditedSessionRepository(
         }
         auditLog = java.util.List.copyOf(updatedLog)
     }
+    override fun all(): List<Session> {
+        return java.util.Collections.unmodifiableList(delegate.all().toMutableList())
+    }
 }
+
