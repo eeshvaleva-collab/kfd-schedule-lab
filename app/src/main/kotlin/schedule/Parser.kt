@@ -1,5 +1,6 @@
 package schedule
 
+import schedule.ParseResult
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -49,60 +50,46 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
 //У сдачи менее двух непустых и непробельных элементов списка, отличных от -.
 //Остальные нарушения домена.
 
-data class UserRecord(
+data class Record(
     val date: LocalDate,
     val type: SessionType,
     val topic: String,
     val location: String,
-    val teachers: String
+    val teachers: List<String>
 )
 
 class Parser {
-    fun parse(line: String, lineNumber: Int, delimiter: Char = '|') : ParseResult<UserRecord> {
-        if (line.isBlank()) {
-            return ParseResult.FailureParse(ParseError.EmptyLine)
-        }
-
+    fun parse(line: String, lineNumber: Int, delimiter: Char = '|'): ParseResult<Record> {
         if (delimiter !in line) {
             return ParseResult.FailureParse(ParseError.MissingSeparator(line))
         }
-
 
         val parts = line.split(delimiter)
         if (parts.size != 5) {
             return ParseResult.FailureParse(ParseError.InvalidFieldCount(line))
         }
         val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = parts
-        for (field in parts){
+        for (field in parts) {
             if (field.isBlank()) {
                 return ParseResult.FailureParse(ParseError.EmptyValue(field))
             }
         }
         val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
+        val teachers = parseTeachers(teachersRaw, type).check(error = { return ParseResult.FailureParse(it) })
 
-
-//        val dateResult = parseDate(dateRow)
-//        if (dateResult is ParseResult.FailureParse) {
-//            return dateResult
-//        }
-//        val date = (dateResult as ParseResult.SuccessParse).value
-//
-//        val typeResult = parseType(typeRaw)
-//        if (typeResult is ParseResult.FailureParse){
-//            return typeResult
-//        }
-//        val type = (typeResult as ParseResult.SuccessParse).value
-
-        return ParseResult.SuccessParse(UserRecord(
-            date = date,
-            type = type,
-            topic = topic,
-            location = location,
-            teachers = teachers
-        ))
+        return ParseResult.SuccessParse(
+            Record(
+                date = date,
+                type = type,
+                topic = topic,
+                location = location,
+                teachers = teachers
+            )
+        )
     }
-    private fun parseDate(dateStr: String) : ParseResult<LocalDate> {
+
+    private fun parseDate(dateStr: String): ParseResult<LocalDate> {
         return try {
             if (dateStr.startsWith("0000")) {
                 return ParseResult.FailureParse(ParseError.EmptyOrInvalidDate(dateStr))
@@ -115,13 +102,36 @@ class Parser {
         }
     }
 
-    private fun parseType(typeRaw: String) : ParseResult<SessionType> {
+    private fun parseType(typeRaw: String): ParseResult<SessionType> {
         for (element in SessionType.entries) {
             if (typeRaw == element.name) {
                 return ParseResult.SuccessParse(element)
             }
         }
         return ParseResult.FailureParse(ParseError.UnknownSessionType(typeRaw))
+    }
+
+    private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
+        val teachers = teachersRaw.split(',')
+        val invalidTeacher = teachers.firstOrNull { it.isBlank() || it.trim() == "-" }
+        // check cancellation type
+        if (sessionType.name == "EXAM") {
+            if (invalidTeacher != null || teachers.size < 2) {
+                return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
+            }
+        }
+        return ParseResult.SuccessParse(teachers)
+    }
+
+    private fun validate(valueRaw: String): ParseError? {
+        if (valueRaw.any { it.isISOControl() }){
+            return ParseError.OthersViolation.ContainsControlCharacters(valueRaw)
+        }
+        if (valueRaw.trim() != valueRaw) {
+            return ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(valueRaw)
+        }
+
+        return null
     }
 }
 
