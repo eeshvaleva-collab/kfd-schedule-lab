@@ -2,25 +2,6 @@ package schedule
 
 import java.time.LocalDate
 
-
-sealed interface ParseError {
-    data class MissingSeparator(val rawValue: String) : ParseError
-    data class InvalidFieldCount(val rawValue: String) : ParseError
-    data class EmptyValue(val rawValue: String) : ParseError
-    data class EmptyOrInvalidDate(val rawValue: String) : ParseError
-    data class UnknownSessionType(val rawValue: String) : ParseError
-    data class InsufficientExamTeachers(val rawValue: String) : ParseError
-
-    sealed interface OthersViolation : ParseError {
-        data class ContainsControlCharacters(val rawValue: String) : OthersViolation
-        data class HasTrailingOrLeadingWhitespaces(val rawValue: String) : OthersViolation
-        data class InvalidCancelledField(val rawValue: String) : OthersViolation
-        data class InvalidActiveLocation(val rawValue: String) : OthersViolation
-        data class InvalidTeacherName(val rawValue: String) : OthersViolation
-        data class DuplicateTeachers(val rawValue: String) : OthersViolation
-        data class DomainError(val rawValue: String) : OthersViolation
-    }
-}
 sealed interface ParseResult <out T> {
     data class SuccessParse<out T>(
         val value: T
@@ -48,12 +29,15 @@ class Parser {
         if (parts.size != 5) {
             return ParseResult.FailureParse(ParseError.InvalidFieldCount(line))
         }
-        val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = parts
-        for (field in parts) {
-            if (field.isBlank()) {
-                return ParseResult.FailureParse(ParseError.EmptyValue(field))
+
+        val fieldNames = listOf("date", "type", "topic", "location", "teachers")
+        for (index in parts.indices) {
+            if (parts[index].isBlank()) {
+                return ParseResult.FailureParse(ParseError.EmptyValue(fieldNames[index]))
             }
         }
+
+        val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = parts
         val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
         if (type.name == "CANCELLED"){
@@ -111,7 +95,7 @@ class Parser {
         }
         val teachers = teachersRaw.split(',')
         val invalidTeacher = teachers.firstOrNull { it.isBlank() || it.trim() == "-" }
-        // check Cancelled type
+
         if (sessionType.name == "EXAM" && (invalidTeacher != null || teachers.size < 2)) {
                 return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
         }
@@ -120,7 +104,7 @@ class Parser {
         }
         return ParseResult.SuccessParse(teachers)
     }
-// check "-" for teachers and location for Cancelled
+
     private fun validate(valueRaw: String): ParseResult<String> {
         if (valueRaw.any { it.isISOControl() }){
             return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(valueRaw))

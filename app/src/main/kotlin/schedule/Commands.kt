@@ -36,16 +36,17 @@ fun runType(command: Command.ByType): Int {
 }
 
 fun runErrors(command: Command.Errors): Int {
-    var totalLines = 0
-    var rejectedCount = 0
+    var totalLines = 0L
+    var rejectedCount = 0L
     streamFile(command.file) { result ->
         totalLines++
         if (result is FileLineResult.Failure) {
             rejectedCount++
-            println("line ${result.lineNumber}: ${result.error}")
+            println("line ${result.lineNumber}: ${result.error.toLogMessage()}")
         }
     }
-    return 0
+    println("Rejected: $rejectedCount of $totalLines")
+    return if (rejectedCount > 0) 1 else 0
 }
 
 private fun streamFile(filePath: String, action: (FileLineResult) -> Unit) {
