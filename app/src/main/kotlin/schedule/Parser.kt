@@ -52,8 +52,8 @@ data class Record(
     val date: LocalDate,
     val type: SessionType,
     val topic: String,
-    val location: String,
-    val teachers: List<String>
+    val location: String? = null,
+    val teachers: List<String>? = null
 )
 
 class Parser {
@@ -74,7 +74,27 @@ class Parser {
         }
         val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
+        if (type.name == "CANCELLATION"){
+            if (teachersRaw != "-") {
+                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(teachersRaw))
+            }
+            if (locationRaw != "-"){
+                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(locationRaw))
+            }
+            val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
+            return ParseResult.SuccessParse(
+                Record(
+                    date = date,
+                    type = type,
+                    topic = topic
+                )
+            )
+        }
+
         val teachers = parseTeachers(teachersRaw, type).check(error = { return ParseResult.FailureParse(it) })
+        
+        val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
+        val location = validate(locationRaw).check(error = { return ParseResult.FailureParse(it) })
 
         return ParseResult.SuccessParse(
             Record(
@@ -110,27 +130,29 @@ class Parser {
     }
 
     private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
+        if (sessionType.name == "CANCELLATION" && (teachersRaw != "-")) {
+            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(teachersRaw))
+        }
         val teachers = teachersRaw.split(',')
         val invalidTeacher = teachers.firstOrNull { it.isBlank() || it.trim() == "-" }
         // check cancellation type
-        if (sessionType.name == "EXAM") {
-            if (invalidTeacher != null || teachers.size < 2) {
+        if (sessionType.name == "EXAM" && (invalidTeacher != null || teachers.size < 2)) {
                 return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
-            }
         }
-        // teachers.toSet().size != teachers.size   DuplicateTeachers
+        if (teachers.toSet().size != teachers.size) {
+            return ParseResult.FailureParse(ParseError.OthersViolation.DuplicateTeachers(teachersRaw))
+        }
         return ParseResult.SuccessParse(teachers)
     }
 // check "-" for teachers and location for cancellation
-    private fun validate(valueRaw: String): ParseError? {
+    private fun validate(valueRaw: String): ParseResult<String> {
         if (valueRaw.any { it.isISOControl() }){
-            return ParseError.OthersViolation.ContainsControlCharacters(valueRaw)
+            return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(valueRaw))
         }
         if (valueRaw.trim() != valueRaw) {
-            return ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(valueRaw)
+            return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(valueRaw))
         }
-
-        return null
+        return ParseResult.SuccessParse(valueRaw)
     }
 }
 
