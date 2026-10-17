@@ -20,7 +20,7 @@ internal object SessionRules {
         require(topic.none { it.isISOControl() }) { "Topic cannot contain control characters" }
     }
 
-    fun checkActiveConstraints(date: LocalDate, topic: String, location: String, teachers: List<String>): List<String> {
+    fun checkActiveConstraints(date: LocalDate, topic: String, location: String, teachers: List<String>, minTeachers: Int = 1): List<String> {
         checkCommonConstraints(date, topic)
         require(location.isNotBlank() && location != "-") { "Location cannot be empty or '-'" }
         require(location.trim() == location) { "Location cannot have leading or trailing spaces" }
@@ -29,6 +29,7 @@ internal object SessionRules {
         require(protectedTeachers.none { it.isBlank() || it.trim() == "-" }) { "Invalid teacher name" }
         require(protectedTeachers.toSet().size == protectedTeachers.size) { "Teachers list cannot contain duplicates" }
         require(protectedTeachers.isNotEmpty()) { "Teachers list cannot be empty" }
+        require(protectedTeachers.size >= minTeachers) { "At least $minTeachers teacher(s) required" }
 
         return protectedTeachers
     }
@@ -58,10 +59,7 @@ data class Exam(
     override val location: String,
     private val teachersRaw: List<String>
 ) : ActiveSession {
-    override val teachers: List<String> = SessionRules.checkActiveConstraints(date, topic, location, teachersRaw)
-    init {
-        require(teachers.size > 1) {"Exam requires at least two different teachers"}
-    }
+    override val teachers: List<String> = SessionRules.checkActiveConstraints(date, topic, location, teachersRaw, 2)
 }
 
 data class Cancellation(

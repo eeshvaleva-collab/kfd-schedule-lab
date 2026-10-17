@@ -1,6 +1,5 @@
 package schedule
 
-import schedule.ParseResult
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -13,7 +12,6 @@ sealed interface ParseError {
     data class EmptyOrInvalidDate(val rawValue: String) : ParseError
     data class UnknownSessionType(val rawValue: String) : ParseError
     data class InsufficientExamTeachers(val rawValue: String) : ParseError
-    data class UnknownType(val rawValue: String) : ParseError
 
     sealed interface OthersViolation : ParseError {
         data class ContainsControlCharacters(val rawValue: String) : OthersViolation
@@ -120,9 +118,10 @@ class Parser {
                 return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
             }
         }
+        // teachers.toSet().size != teachers.size   DuplicateTeachers
         return ParseResult.SuccessParse(teachers)
     }
-
+// check "-" for teachers and location for cancellation
     private fun validate(valueRaw: String): ParseError? {
         if (valueRaw.any { it.isISOControl() }){
             return ParseError.OthersViolation.ContainsControlCharacters(valueRaw)
