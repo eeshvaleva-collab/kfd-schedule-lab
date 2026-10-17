@@ -1,8 +1,6 @@
 package schedule
 
 import java.time.LocalDate
-import java.time.format.DateTimeParseException
-
 
 
 sealed interface ParseError {
@@ -40,23 +38,6 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
     }
 }
 
-//val dataRegex = """^[0-9]{4}-[0-9]{2}-[0-9]{2}$""".toRegex()
-//Нет | — неверный разделитель.
-//Полей не пять — неверное количество полей.
-//Есть пустое или полностью пробельное поле — первое такое поле в порядке следования.
-//Неверный формат или значение даты.
-//Неизвестный тип занятия.
-//У сдачи менее двух непустых и непробельных элементов списка, отличных от -.
-//Остальные нарушения домена.
-
-//data class Record(
-//    val date: LocalDate,
-//    val type: SessionType,
-//    val topic: String,
-//    val location: String? = null,
-//    val teachers: List<String>? = null
-//)
-
 class Parser {
     fun parse(line: String, delimiter: Char = '|'): ParseResult<Session> {
         if (delimiter !in line) {
@@ -87,15 +68,6 @@ class Parser {
         val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
         val location = validate(locationRaw).check(error = { return ParseResult.FailureParse(it) })
 
-//        return ParseResult.SuccessParse(
-//            Record(
-//                date = date,
-//                type = type,
-//                topic = topic,
-//                location = location,
-//                teachers = teachers
-//            )
-//        )
         return try {
             val session = when (type) {
                 SessionType.LECTURE -> Lecture(date, topic, location, teachers)
@@ -104,11 +76,12 @@ class Parser {
                 SessionType.CANCELLED -> Cancellation(date, topic)
             }
             ParseResult.SuccessParse(session)
-        } catch (e: IllegalArgumentException) {
-            ParseResult.FailureParse(ParseError.OthersViolation.DomainError(e.message ?: ""))
+            }
+        catch (e: IllegalArgumentException) {
+                ParseResult.FailureParse(ParseError.OthersViolation.DomainError(e.message ?: ""))
+            }
         }
-        }
-    }
+
 
     private fun parseDate(dateStr: String): ParseResult<LocalDate> {
         return try {
