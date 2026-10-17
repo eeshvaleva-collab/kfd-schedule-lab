@@ -20,6 +20,7 @@ sealed interface ParseError {
         data class InvalidActiveLocation(val rawValue: String) : OthersViolation
         data class InvalidTeacherName(val rawValue: String) : OthersViolation
         data class DuplicateTeachers(val rawValue: String) : OthersViolation
+        data class DomainError(val rawValue: String) : OthersViolation
     }
 }
 sealed interface ParseResult <out T> {
@@ -48,16 +49,16 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
 //У сдачи менее двух непустых и непробельных элементов списка, отличных от -.
 //Остальные нарушения домена.
 
-data class Record(
-    val date: LocalDate,
-    val type: SessionType,
-    val topic: String,
-    val location: String? = null,
-    val teachers: List<String>? = null
-)
+//data class Record(
+//    val date: LocalDate,
+//    val type: SessionType,
+//    val topic: String,
+//    val location: String? = null,
+//    val teachers: List<String>? = null
+//)
 
 class Parser {
-    fun parse(line: String, lineNumber: Int, delimiter: Char = '|'): ParseResult<Record> {
+    fun parse(line: String, delimiter: Char = '|'): ParseResult<Session> {
         if (delimiter !in line) {
             return ParseResult.FailureParse(ParseError.MissingSeparator(line))
         }
@@ -74,37 +75,39 @@ class Parser {
         }
         val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
-        if (type.name == "CANCELLATION"){
+        if (type.name == "CANCELLED"){
             if (teachersRaw != "-") {
                 return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(teachersRaw))
             }
             if (locationRaw != "-"){
                 return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(locationRaw))
             }
-            val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
-            return ParseResult.SuccessParse(
-                Record(
-                    date = date,
-                    type = type,
-                    topic = topic
-                )
-            )
         }
-
         val teachers = parseTeachers(teachersRaw, type).check(error = { return ParseResult.FailureParse(it) })
-        
         val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
         val location = validate(locationRaw).check(error = { return ParseResult.FailureParse(it) })
 
-        return ParseResult.SuccessParse(
-            Record(
-                date = date,
-                type = type,
-                topic = topic,
-                location = location,
-                teachers = teachers
-            )
-        )
+//        return ParseResult.SuccessParse(
+//            Record(
+//                date = date,
+//                type = type,
+//                topic = topic,
+//                location = location,
+//                teachers = teachers
+//            )
+//        )
+        return try {
+            val session = when (type) {
+                SessionType.LECTURE -> Lecture(date, topic, location, teachers)
+                SessionType.PRACTICE -> Practice(date, topic, location, teachers)
+                SessionType.EXAM -> Exam(date, topic, location, teachers)
+                SessionType.CANCELLED -> Cancellation(date, topic)
+            }
+            ParseResult.SuccessParse(session)
+        } catch (e: IllegalArgumentException) {
+            ParseResult.FailureParse(ParseError.OthersViolation.DomainError(e.message ?: ""))
+        }
+        }
     }
 
     private fun parseDate(dateStr: String): ParseResult<LocalDate> {
@@ -155,4 +158,9 @@ class Parser {
         return ParseResult.SuccessParse(valueRaw)
     }
 }
+
+//fun main(){
+//    val f = Parser()
+//    println(f.parse("0000-12-22|PRACTI|Topic 010|Room 312|Anokhin"))
+//}
 
