@@ -14,7 +14,7 @@ sealed interface ParseError {
     sealed interface OthersViolation : ParseError {
         data class ContainsControlCharacters(val rawValue: String) : OthersViolation
         data class HasTrailingOrLeadingWhitespaces(val rawValue: String) : OthersViolation
-        data class InvalidCancellationField(val rawValue: String) : OthersViolation
+        data class InvalidCancelledField(val rawValue: String) : OthersViolation
         data class InvalidActiveLocation(val rawValue: String) : OthersViolation
         data class InvalidTeacherName(val rawValue: String) : OthersViolation
         data class DuplicateTeachers(val rawValue: String) : OthersViolation
@@ -58,10 +58,10 @@ class Parser {
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
         if (type.name == "CANCELLED"){
             if (teachersRaw != "-") {
-                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(teachersRaw))
+                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(teachersRaw))
             }
             if (locationRaw != "-"){
-                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(locationRaw))
+                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(locationRaw))
             }
         }
         val teachers = parseTeachers(teachersRaw, type).check(error = { return ParseResult.FailureParse(it) })
@@ -73,7 +73,7 @@ class Parser {
                 SessionType.LECTURE -> Lecture(date, topic, location, teachers)
                 SessionType.PRACTICE -> Practice(date, topic, location, teachers)
                 SessionType.EXAM -> Exam(date, topic, location, teachers)
-                SessionType.CANCELLED -> Cancellation(date, topic)
+                SessionType.CANCELLED -> Cancelled(date, topic)
             }
             ParseResult.SuccessParse(session)
             }
@@ -106,12 +106,12 @@ class Parser {
     }
 
     private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
-        if (sessionType.name == "CANCELLATION" && (teachersRaw != "-")) {
-            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancellationField(teachersRaw))
+        if (sessionType.name == "Cancelled" && (teachersRaw != "-")) {
+            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(teachersRaw))
         }
         val teachers = teachersRaw.split(',')
         val invalidTeacher = teachers.firstOrNull { it.isBlank() || it.trim() == "-" }
-        // check cancellation type
+        // check Cancelled type
         if (sessionType.name == "EXAM" && (invalidTeacher != null || teachers.size < 2)) {
                 return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
         }
@@ -120,7 +120,7 @@ class Parser {
         }
         return ParseResult.SuccessParse(teachers)
     }
-// check "-" for teachers and location for cancellation
+// check "-" for teachers and location for Cancelled
     private fun validate(valueRaw: String): ParseResult<String> {
         if (valueRaw.any { it.isISOControl() }){
             return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(valueRaw))
@@ -132,8 +132,4 @@ class Parser {
     }
 }
 
-//fun main(){
-//    val f = Parser()
-//    println(f.parse("0000-12-22|PRACTI|Topic 010|Room 312|Anokhin"))
-//}
 

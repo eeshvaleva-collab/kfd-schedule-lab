@@ -5,6 +5,18 @@ import java.time.LocalDate
 sealed interface Session {
     val date: LocalDate
     val topic: String
+
+    fun formString(showTeachers: Boolean = false): String {
+        val typeName = this::class.simpleName?.uppercase()
+        val locationStr = if (this is ActiveSession) this.location else "-"
+
+        val base = "$date | $typeName | $topic | $locationStr"
+        return if (showTeachers) {
+            val teachersStr = if (this is ActiveSession) this.teachers.joinToString(", ") else "-"
+            "$base | $teachersStr"
+        } else base
+
+    }
 }
 
 sealed interface ActiveSession : Session {
@@ -62,7 +74,7 @@ data class Exam(
     override val teachers: List<String> = SessionRules.checkActiveConstraints(date, topic, location, teachersRaw, 2)
 }
 
-data class Cancellation(
+data class Cancelled(
     override val date: LocalDate,
     override val topic: String
 ) : Session {

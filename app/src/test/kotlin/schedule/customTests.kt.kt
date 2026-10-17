@@ -28,7 +28,7 @@ class AuditedRepositoryTest {
         val baseRepo = InMemorySessionRepository()
         val auditedRepo = AuditedSessionRepository(baseRepo)
 
-        val s1 = Cancellation(validDate, "Cancelled Lecture")
+        val s1 = Cancelled(validDate, "Cancelled Lecture")
         val s2 = Lecture(validDate, "Topic 1", "Room 1", listOf("Ivanov"))
         val s3 = Practice(validDate, "Topic 2", "Room 2", listOf("Petrov"))
 
@@ -58,7 +58,7 @@ class AuditedRepositoryTest {
         val baseRepo = InMemorySessionRepository()
         val auditedRepo = AuditedSessionRepository(baseRepo)
 
-        val initialSession = Cancellation(validDate, "Initial Session")
+        val initialSession = Cancelled(validDate, "Initial Session")
         auditedRepo.add(initialSession)
 
         val snapshotBefore = auditedRepo.all()

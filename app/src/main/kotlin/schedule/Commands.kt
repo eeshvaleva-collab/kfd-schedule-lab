@@ -1,5 +1,7 @@
 package schedule
 
+import java.time.LocalDate
+
 interface CommandHandlers {
     fun period(command: Command.Period): Int
     fun byType(command: Command.ByType): Int
@@ -13,22 +15,52 @@ object StudentCommandHandlers : CommandHandlers {
 }
 
 fun runPeriod(command: Command.Period): Int {
-    // TODO: parse every line of command.file, filter by command.from..command.to,
-    // print the selected sessions and Total, return 0 or 1.
-    println("Not implemented: period")
-    return 2
+    var status = 0
+    var totalLines = 0
+    streamFile(command.file) { result ->
+        totalLines++
+        if (result is FileLineResult.Failure) {
+            status = 1
+        }
+        else if (result is FileLineResult.Success) {
+           println(result.session.formString())
+        }
+    }
+    return status
 }
 
 fun runType(command: Command.ByType): Int {
-    // TODO: parse every line of command.file, filter by command.type,
-    // print the selected sessions with teachers and Total, return 0 or 1.
-    println("Not implemented: type")
-    return 2
+    var status = 0
+
+    return status
 }
 
 fun runErrors(command: Command.Errors): Int {
-    // TODO: parse every line of command.file, print formatted rejections
-    // and Rejected: K of M, return 0 or 1.
-    println("Not implemented: errors")
-    return 2
+    var totalLines = 0
+    var rejectedCount = 0
+    streamFile(command.file) { result ->
+        totalLines++
+        if (result is FileLineResult.Failure) {
+            rejectedCount++
+            println("line ${result.lineNumber}: ${result.error}")
+        }
+    }
+    return 0
+}
+
+private fun streamFile(filePath: String, action: (FileLineResult) -> Unit) {
+    val parser = Parser()
+    forEachScheduleLine(filePath) { number, line ->
+        val result = when (val parseResult = parser.parse(line)) {
+            is ParseResult.SuccessParse -> FileLineResult.Success(parseResult.value)
+            is ParseResult.FailureParse -> FileLineResult.Failure(number, parseResult.error)
+        }
+        action(result)
+    }
+}
+
+sealed interface FileLineResult {
+    data class Success(val session: Session) : FileLineResult
+
+    data class Failure(val lineNumber: Long, val error: ParseError) : FileLineResult
 }
