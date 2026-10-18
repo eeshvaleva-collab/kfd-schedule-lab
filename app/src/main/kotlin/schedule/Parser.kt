@@ -22,23 +22,7 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
 
 class Parser {
     fun parse(line: String, delimiter: Char = '|'): ParseResult<Session> {
-        if (delimiter !in line) {
-            return ParseResult.FailureParse(ParseError.MissingSeparator(line))
-        }
-
-        val parts = line.split(delimiter)
-        if (parts.size != 5) {
-            return ParseResult.FailureParse(ParseError.InvalidFieldCount(line))
-        }
-
-        val fieldNames = listOf("date", "type", "topic", "location", "teachers")
-        for (index in parts.indices) {
-            if (parts[index].isBlank()) {
-                return ParseResult.FailureParse(ParseError.EmptyValue(fieldNames[index]))
-            }
-        }
-
-        val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = parts
+        val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = validateGeneral(line, delimiter = delimiter).check(error = { return ParseResult.FailureParse(it) })
         val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
         if (type == SessionType.CANCELLED) {
@@ -67,7 +51,25 @@ class Parser {
                 ParseResult.FailureParse(ParseError.OthersViolation.DomainError(e.message ?: "Domain violation"))
         }
     }
+    private fun validateGeneral(line: String, delimiter: Char) :ParseResult<List<String>> {
+        if (delimiter !in line) {
+            return ParseResult.FailureParse(ParseError.MissingSeparator(line))
+        }
 
+        val parts = line.split(delimiter)
+        if (parts.size != 5) {
+            return ParseResult.FailureParse(ParseError.InvalidFieldCount(line))
+        }
+
+        val fieldNames = listOf("date", "type", "topic", "location", "teachers")
+        for (index in parts.indices) {
+            if (parts[index].isBlank()) {
+                return ParseResult.FailureParse(ParseError.EmptyValue(fieldNames[index]))
+            }
+        }
+
+        return ParseResult.SuccessParse(parts)
+    }
 
     private fun parseDate(dateStr: String): ParseResult<LocalDate> {
         return try {
