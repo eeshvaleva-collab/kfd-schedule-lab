@@ -1,6 +1,0 @@
-2026-10-05|LECTURE| TopicWithLeadingSpace|Room 312|Portnov
-2026-10-05|LECTURE|TopicWithControlChar\u0009|Room 312|Portnov
-2026-10-05|PRACTICE|Valid Topic|-|Portnov
-2026-10-05|CANCELLED|Valid Cancellation|Room 111|-
-2026-10-15|EXAM|Oral Exam|Room 401|Portnov, Stepanova, Portnov
-2026-10-15|LECTURE|Valid Lecture|Room 401|Portnov, ,Sidorov

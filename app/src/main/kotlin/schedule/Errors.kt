@@ -31,6 +31,7 @@ sealed interface ParseError {
         data class InvalidTeacherName(val rawValue: String) : OthersViolation
         data class DuplicateTeachers(val rawValue: String) : OthersViolation
         data class DomainError(val rawValue: String) : OthersViolation
+        data class InsufficientActiveTeachers(val rawValue: String, val typeName: String) : ParseError
     }
 }
 
@@ -51,9 +52,13 @@ fun ParseError.logMessage(): String = when (this) {
     }
     is ParseError.OthersViolation.ContainsControlCharacters -> "value contains control characters"
     is ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces -> "value has trailing or leading whitespaces"
-    is ParseError.OthersViolation.InvalidCancelledField -> "cancelled session fields must be \"-\""
+    is ParseError.OthersViolation.InvalidCancelledField -> "cancelled session location and teachers fields must be \"-\""
     is ParseError.OthersViolation.InvalidActiveLocation -> "active session location cannot be \"-\""
     is ParseError.OthersViolation.InvalidTeacherName -> "invalid teacher name"
     is ParseError.OthersViolation.DuplicateTeachers -> "teachers list contains duplicates"
+    is ParseError.OthersViolation.InsufficientActiveTeachers -> {
+        val teachersCount = if (this.rawValue == "-") 0 else this.rawValue.split(',').size
+        "type requires at least 2 teachers, got $teachersCount"
+    }
     is ParseError.OthersViolation.DomainError -> escape(this.rawValue)
 }
