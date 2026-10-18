@@ -27,13 +27,15 @@ sealed interface ActiveSession : Session {
 internal object SessionRules {
     fun checkCommonConstraints(date: LocalDate, topic: String) {
         require(date.year in 1..9999) { "Year must be between 1 and 9999" }
+        require(topic.none { it.isISOControl() }) { "Topic cannot contain control characters" }
         require(topic.isNotBlank()) { "Topic cannot be empty" }
         require(topic.trim() == topic) { "Topic cannot have leading or trailing spaces" }
-        require(topic.none { it.isISOControl() }) { "Topic cannot contain control characters" }
     }
 
     fun checkActiveConstraints(date: LocalDate, topic: String, location: String, teachers: List<String>, minTeachers: Int = 1): List<String> {
         checkCommonConstraints(date, topic)
+
+        require(location.none { it.isISOControl() }) { "Location cannot contain control characters" }
         require(location.isNotBlank() && location != "-") { "Location cannot be empty or '-'" }
         require(location.trim() == location) { "Location cannot have leading or trailing spaces" }
 
@@ -41,6 +43,11 @@ internal object SessionRules {
         require(teachers.toSet().size == teachers.size) { "Teachers list cannot contain duplicates" }
         require(teachers.isNotEmpty()) { "Teachers list cannot be empty" }
         require(teachers.size >= minTeachers) { "At least $minTeachers teacher(s) required" }
+        for (teacher in teachers) {
+            require(teacher.none { it.isISOControl() }) { "Teacher name cannot contain control characters" }
+            require(teacher.trim() == teacher) { "Teacher name cannot have leading or trailing spaces" }
+            require(teacher.isNotEmpty() && teacher != "-") { "Invalid teacher name" }
+        }
 
         return teachers
     }

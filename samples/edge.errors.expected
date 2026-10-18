@@ -1,7 +1,0 @@
-line 1: value has trailing or leading whitespaces
-line 2: value contains control characters
-line 3: active session location cannot be "-"
-line 4: cancelled session fields must be "-"
-line 5: teachers list contains duplicates
-line 6: invalid teacher name
-Rejected: 6 of 6

@@ -1,6 +1,7 @@
 package schedule
 
 import java.time.LocalDate
+import kotlin.text.isISOControl
 
 sealed interface ParseResult <out T> {
     data class SuccessParse<out T>(
@@ -20,6 +21,8 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
 }
 
 class Parser {
+
+    //TODO
     fun parse(line: String, delimiter: Char = '|'): ParseResult<Session> {
         if (delimiter !in line) {
             return ParseResult.FailureParse(ParseError.MissingSeparator(line))
@@ -53,7 +56,7 @@ class Parser {
 
         val teachers = parseTeachers(teachersRaw, type).check(error = { return ParseResult.FailureParse(it) })
         val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
-        val location = validate(locationRaw).check(error = { return ParseResult.FailureParse(it) })
+        val location = validate(locationRaw, checkInvalid = true).check(error = { return ParseResult.FailureParse(it) })
 
         val session = when (type) {
                 SessionType.LECTURE -> Lecture(date, topic, location, teachers)
@@ -88,27 +91,39 @@ class Parser {
 
     private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
         val teachers = teachersRaw.split(',')
-        val validTeachersCount = if (teachersRaw == "-") 0 else teachers.count { it.isNotBlank() && it.trim() != "-"
-        }
+        val validTeachersCount = teachers.count { it.isNotBlank() && it.trim() != "-"}
 
         if (sessionType == SessionType.EXAM && (validTeachersCount < 2)) {
                 return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
         }
+        for (teacher in teachers){
+            if (teacher.any{it.isISOControl()}){
+                return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(teachersRaw))
+            }
+            if (teacher.isNotBlank() && teacher.trim() != teacher){
+                return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(teachersRaw))
+            }
+        }
+
         if (validTeachersCount != teachers.size) {
             return ParseResult.FailureParse(ParseError.OthersViolation.InvalidTeacherName(teachersRaw))
         }
         if (teachers.toSet().size != teachers.size) {
             return ParseResult.FailureParse(ParseError.OthersViolation.DuplicateTeachers(teachersRaw))
         }
+
         return ParseResult.SuccessParse(teachers)
     }
 
-    private fun validate(valueRaw: String): ParseResult<String> {
+    private fun validate(valueRaw: String, checkInvalid: Boolean = false): ParseResult<String> {
         if (valueRaw.any { it.isISOControl() }){
             return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(valueRaw))
         }
         if (valueRaw.trim() != valueRaw) {
             return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(valueRaw))
+        }
+        if (checkInvalid && (valueRaw.isEmpty() || valueRaw == "-")) {
+            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidActiveLocation(valueRaw))
         }
         return ParseResult.SuccessParse(valueRaw)
     }
