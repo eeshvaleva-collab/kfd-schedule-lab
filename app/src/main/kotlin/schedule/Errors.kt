@@ -34,7 +34,7 @@ sealed interface ParseError {
     }
 }
 
-fun ParseError.toLogMessage(): String = when (this) {
+fun ParseError.logMessage(): String = when (this) {
     is ParseError.MissingSeparator -> "invalid field separator"
     is ParseError.InvalidFieldCount -> {
         val actualFields = this.rawValue.split('|').size

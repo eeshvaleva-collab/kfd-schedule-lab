@@ -16,37 +16,49 @@ object StudentCommandHandlers : CommandHandlers {
 
 fun runPeriod(command: Command.Period): Int {
     var status = 0
-    var totalLines = 0
+    var totalLines = 0L
     streamFile(command.file) { result ->
-        totalLines++
         if (result is FileLineResult.Failure) {
             status = 1
         }
-        else if (result is FileLineResult.Success) {
+        else if (result is FileLineResult.Success && result.session.date in command.from..command.to) {
+            totalLines++
            println(result.session.formString())
         }
     }
+    println("Total: $totalLines")
     return status
 }
 
 fun runType(command: Command.ByType): Int {
     var status = 0
+    var totalLines = 0L
 
+    streamFile(command.file) { result ->
+        if (result is FileLineResult.Failure) {
+            status = 1
+        }
+        else if (result is FileLineResult.Success && result.session::class.simpleName?.uppercase() == command.type.name) {
+            println(result.session.formString(showTeachers = true))
+            totalLines++
+        }
+    }
+    println("Total: $totalLines")
     return status
 }
 
 fun runErrors(command: Command.Errors): Int {
     var totalLines = 0L
-    var rejectedCount = 0L
+    var rejectedLines = 0L
     streamFile(command.file) { result ->
         totalLines++
         if (result is FileLineResult.Failure) {
-            rejectedCount++
-            println("line ${result.lineNumber}: ${result.error.toLogMessage()}")
+            rejectedLines++
+            println("line ${result.lineNumber}: ${result.error.logMessage()}")
         }
     }
-    println("Rejected: $rejectedCount of $totalLines")
-    return if (rejectedCount > 0) 1 else 0
+    println("Rejected: $rejectedLines of $totalLines")
+    return if (rejectedLines > 0) 1 else 0
 }
 
 private fun streamFile(filePath: String, action: (FileLineResult) -> Unit) {

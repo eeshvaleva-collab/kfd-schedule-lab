@@ -90,14 +90,18 @@ class Parser {
     }
 
     private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
-        if (sessionType.name == "Cancelled" && (teachersRaw != "-")) {
+        if (sessionType.name == "CANCELLED" && (teachersRaw != "-")) {
             return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(teachersRaw))
         }
         val teachers = teachersRaw.split(',')
-        val invalidTeacher = teachers.firstOrNull { it.isBlank() || it.trim() == "-" }
+        val validTeachersCount = if (teachersRaw == "-") 0 else teachers.count { it.isNotBlank() && it.trim() != "-"
+        }
 
-        if (sessionType.name == "EXAM" && (invalidTeacher != null || teachers.size < 2)) {
+        if (sessionType.name == "EXAM" && (validTeachersCount != 0 || teachers.size < 2)) {
                 return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
+        }
+        if (validTeachersCount != 0) {
+            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidTeacherName(teachersRaw))
         }
         if (teachers.toSet().size != teachers.size) {
             return ParseResult.FailureParse(ParseError.OthersViolation.DuplicateTeachers(teachersRaw))

@@ -37,13 +37,12 @@ internal object SessionRules {
         require(location.isNotBlank() && location != "-") { "Location cannot be empty or '-'" }
         require(location.trim() == location) { "Location cannot have leading or trailing spaces" }
 
-        val protectedTeachers = java.util.List.copyOf(teachers)
-        require(protectedTeachers.none { it.isBlank() || it.trim() == "-" }) { "Invalid teacher name" }
-        require(protectedTeachers.toSet().size == protectedTeachers.size) { "Teachers list cannot contain duplicates" }
-        require(protectedTeachers.isNotEmpty()) { "Teachers list cannot be empty" }
-        require(protectedTeachers.size >= minTeachers) { "At least $minTeachers teacher(s) required" }
+        require(teachers.none { it.isBlank() || it.trim() == "-" }) { "Invalid teacher name" }
+        require(teachers.toSet().size == teachers.size) { "Teachers list cannot contain duplicates" }
+        require(teachers.isNotEmpty()) { "Teachers list cannot be empty" }
+        require(teachers.size >= minTeachers) { "At least $minTeachers teacher(s) required" }
 
-        return protectedTeachers
+        return teachers
     }
 }
 
@@ -53,7 +52,10 @@ data class Lecture(
     override val location: String,
     private val teachersRaw: List<String>
 ) : ActiveSession {
-        override val teachers: List<String> = SessionRules.checkActiveConstraints(date, topic, location, teachersRaw)
+        override val teachers: List<String> = java.util.List.copyOf(teachersRaw)
+        init {
+            SessionRules.checkActiveConstraints(date, topic, location, teachers)
+        }
 }
 
 data class Practice(
@@ -62,7 +64,10 @@ data class Practice(
     override val location: String,
     private val teachersRaw: List<String>
 ) : ActiveSession {
-    override val teachers: List<String> = SessionRules.checkActiveConstraints(date, topic, location, teachersRaw)
+    override val teachers: List<String> = java.util.List.copyOf(teachersRaw)
+    init {
+        SessionRules.checkActiveConstraints(date, topic, location, teachers)
+    }
 }
 
 data class Exam(
@@ -71,7 +76,10 @@ data class Exam(
     override val location: String,
     private val teachersRaw: List<String>
 ) : ActiveSession {
-    override val teachers: List<String> = SessionRules.checkActiveConstraints(date, topic, location, teachersRaw, 2)
+    override val teachers: List<String> = java.util.List.copyOf(teachersRaw)
+    init {
+        SessionRules.checkActiveConstraints(date, topic, location, teachers, 2)
+    }
 }
 
 data class Cancelled(
