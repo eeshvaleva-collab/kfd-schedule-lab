@@ -37,10 +37,10 @@ bash ./gradlew build :app:installDist
   ./app/build/install/schedule/bin/schedule errors --file samples/dirty.txt
   ```
 
-### Генерация большого файла и запуск всех тестов из скрипта
+### Генерация большого файла и запуск всех тестов из скрипта (включая мои кастомные)
 ```bash
 python tools/generate_samples.py --huge
-python tools/verify.py --huge
+python tools/verify.py --huge --custom
 ```
 ---
 
