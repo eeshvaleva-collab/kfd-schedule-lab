@@ -1,0 +1,7 @@
+line 1: invalid date "2026-13-45"
+line 2: teachers list contains duplicates
+line 3: empty required field "topic"
+line 4: empty required field "date"
+line 5: invalid teacher name
+line 6: invalid field separator
+Rejected: 6 of 6
