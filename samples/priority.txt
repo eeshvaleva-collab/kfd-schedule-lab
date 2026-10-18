@@ -1,0 +1,7 @@
+2026-13-45|SEMINAR|Topic|Room 1|Ivanov
+2026-10-05|EXAM|Topic|Room 1|Ivanov,Ivanov
+2026-10-05|EXAM|   |Room 1|Ivanov
+
+|EXAM|Topic|Room 1|Ivanov
+2026-10-05|EXAM|Topic|Room 1|Ivanov,   ,Petrov
+2026-10-05 LECTURE Topic Room 312 Petrov

@@ -1,0 +1,4 @@
+2026-10-05|LECTURE|Math - Logic|Room-312|Portnov-Anokhin
+2026-10-08|PRACTICE|Domain modeling (advanced)|Room 312|Anokhin,Portnov,Sidorov
+2026-10-19|CANCELLED|Lecture postponed due to weather|-|-
+2026-10-20|EXAM|Test|R|A,B
