@@ -21,8 +21,6 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
 }
 
 class Parser {
-
-    //TODO
     fun parse(line: String, delimiter: Char = '|'): ParseResult<Session> {
         if (delimiter !in line) {
             return ParseResult.FailureParse(ParseError.MissingSeparator(line))
@@ -43,11 +41,11 @@ class Parser {
         val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = parts
         val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
-        if (type == SessionType.CANCELLED){
+        if (type == SessionType.CANCELLED) {
             if (teachersRaw != "-") {
                 return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(teachersRaw))
             }
-            if (locationRaw != "-"){
+            if (locationRaw != "-") {
                 return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(locationRaw))
             }
             val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
@@ -58,13 +56,17 @@ class Parser {
         val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
         val location = validate(locationRaw, checkInvalid = true).check(error = { return ParseResult.FailureParse(it) })
 
-        val session = when (type) {
+        return try {
+            val session = when (type) {
                 SessionType.LECTURE -> Lecture(date, topic, location, teachers)
                 SessionType.PRACTICE -> Practice(date, topic, location, teachers)
                 SessionType.EXAM -> Exam(date, topic, location, teachers)
             }
-        return ParseResult.SuccessParse(session)
+            ParseResult.SuccessParse(session)
+        } catch (e: IllegalArgumentException) {
+                ParseResult.FailureParse(ParseError.OthersViolation.DomainError(e.message ?: "Domain violation"))
         }
+    }
 
 
     private fun parseDate(dateStr: String): ParseResult<LocalDate> {
