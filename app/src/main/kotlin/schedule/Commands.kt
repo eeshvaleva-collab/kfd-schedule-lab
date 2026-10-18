@@ -1,5 +1,7 @@
 package schedule
 
+import java.time.LocalDate
+
 interface CommandHandlers {
     fun period(command: Command.Period): Int
     fun byType(command: Command.ByType): Int
@@ -13,22 +15,65 @@ object StudentCommandHandlers : CommandHandlers {
 }
 
 fun runPeriod(command: Command.Period): Int {
-    // TODO: parse every line of command.file, filter by command.from..command.to,
-    // print the selected sessions and Total, return 0 or 1.
-    println("Not implemented: period")
-    return 2
+    var status = 0
+    var totalLines = 0L
+    streamFile(command.file) { result ->
+        if (result is FileLineResult.Failure) {
+            status = 1
+        }
+        else if (result is FileLineResult.Success && result.session.date in command.from..command.to) {
+            totalLines++
+           println(result.session.formString())
+        }
+    }
+    println("Total: $totalLines")
+    return status
 }
 
 fun runType(command: Command.ByType): Int {
-    // TODO: parse every line of command.file, filter by command.type,
-    // print the selected sessions with teachers and Total, return 0 or 1.
-    println("Not implemented: type")
-    return 2
+    var status = 0
+    var totalLines = 0L
+
+    streamFile(command.file) { result ->
+        if (result is FileLineResult.Failure) {
+            status = 1
+        }
+        else if (result is FileLineResult.Success && result.session::class.simpleName?.uppercase() == command.type.name) {
+            println(result.session.formString(showTeachers = true))
+            totalLines++
+        }
+    }
+    println("Total: $totalLines")
+    return status
 }
 
 fun runErrors(command: Command.Errors): Int {
-    // TODO: parse every line of command.file, print formatted rejections
-    // and Rejected: K of M, return 0 or 1.
-    println("Not implemented: errors")
-    return 2
+    var totalLines = 0L
+    var rejectedLines = 0L
+    streamFile(command.file) { result ->
+        totalLines++
+        if (result is FileLineResult.Failure) {
+            rejectedLines++
+            println("line ${result.lineNumber}: ${result.error.logMessage()}")
+        }
+    }
+    println("Rejected: $rejectedLines of $totalLines")
+    return if (rejectedLines > 0) 1 else 0
+}
+
+private fun streamFile(filePath: String, action: (FileLineResult) -> Unit) {
+    val parser = Parser()
+    forEachScheduleLine(filePath) { number, line ->
+        val result = when (val parseResult = parser.parse(line)) {
+            is ParseResult.SuccessParse -> FileLineResult.Success(parseResult.value)
+            is ParseResult.FailureParse -> FileLineResult.Failure(number, parseResult.error)
+        }
+        action(result)
+    }
+}
+
+sealed interface FileLineResult {
+    data class Success(val session: Session) : FileLineResult
+
+    data class Failure(val lineNumber: Long, val error: ParseError) : FileLineResult
 }
