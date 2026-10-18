@@ -127,14 +127,6 @@
     "empty.type.expected": {
       "bytes": 9,
       "sha256": "22b877ca1c56d233cfcd292a680ae792e300a5dd5878321697c1ff0492e835cf"
-    },
-    "priority.errors.expected": {
-      "bytes": 226,
-      "sha256": "eb053ec876b8911e34ed6099198a1f881929dc6ff39bfca6d93ef31aa9ee2c22"
-    },
-    "priority.txt": {
-      "bytes": 230,
-      "sha256": "71523150f60bc9d7a3002c8c5412d79dab25ea5a91079682215915951fbfbc8b"
     }
   }
 }
