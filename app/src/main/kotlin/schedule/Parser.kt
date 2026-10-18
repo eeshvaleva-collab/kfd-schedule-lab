@@ -40,30 +40,27 @@ class Parser {
         val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = parts
         val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
         val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
-        if (type.name == "CANCELLED"){
+        if (type == SessionType.CANCELLED){
             if (teachersRaw != "-") {
                 return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(teachersRaw))
             }
             if (locationRaw != "-"){
                 return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(locationRaw))
             }
+            val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
+            return ParseResult.SuccessParse(Cancelled(date, topic))
         }
+
         val teachers = parseTeachers(teachersRaw, type).check(error = { return ParseResult.FailureParse(it) })
         val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
         val location = validate(locationRaw).check(error = { return ParseResult.FailureParse(it) })
 
-        return try {
-            val session = when (type) {
+        val session = when (type) {
                 SessionType.LECTURE -> Lecture(date, topic, location, teachers)
                 SessionType.PRACTICE -> Practice(date, topic, location, teachers)
                 SessionType.EXAM -> Exam(date, topic, location, teachers)
-                SessionType.CANCELLED -> Cancelled(date, topic)
             }
-            ParseResult.SuccessParse(session)
-            }
-        catch (e: IllegalArgumentException) {
-                ParseResult.FailureParse(ParseError.OthersViolation.DomainError(e.message ?: ""))
-            }
+        return ParseResult.SuccessParse(session)
         }
 
 
@@ -90,17 +87,14 @@ class Parser {
     }
 
     private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
-        if (sessionType.name == "CANCELLED" && (teachersRaw != "-")) {
-            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(teachersRaw))
-        }
         val teachers = teachersRaw.split(',')
         val validTeachersCount = if (teachersRaw == "-") 0 else teachers.count { it.isNotBlank() && it.trim() != "-"
         }
 
-        if (sessionType.name == "EXAM" && (validTeachersCount != 0 || teachers.size < 2)) {
+        if (sessionType == SessionType.EXAM && (validTeachersCount < 2)) {
                 return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
         }
-        if (validTeachersCount != 0) {
+        if (validTeachersCount != teachers.size) {
             return ParseResult.FailureParse(ParseError.OthersViolation.InvalidTeacherName(teachersRaw))
         }
         if (teachers.toSet().size != teachers.size) {
