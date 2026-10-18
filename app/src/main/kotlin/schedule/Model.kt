@@ -17,11 +17,32 @@ sealed interface Session {
         } else base
 
     }
+
+    fun reschedule(newDate: LocalDate): RescheduleResult<ActiveSession> {
+        if (this !is ActiveSession){
+            return RescheduleResult.Failure("Cannot reschedule a cancelled session")
+        }
+        if (newDate <= LocalDate.now()) {
+            return RescheduleResult.Failure("New date should be in the future")
+        }
+        if (newDate == this.date) {
+            return RescheduleResult.Failure("New date can't be the same as the old date")
+        }
+        val session = createRescheduledSession(newDate)
+        return RescheduleResult.Success(session)
+    }
+}
+
+sealed interface RescheduleResult<out T> {
+    data class Success<out T>(val value: T) : RescheduleResult<T>
+    data class Failure(val message: String) : RescheduleResult<Nothing>
 }
 
 sealed interface ActiveSession : Session {
     val location: String
     val teachers: List<String>
+
+    fun createRescheduledSession(newDate: LocalDate): ActiveSession
 }
 
 internal object SessionRules {
@@ -63,6 +84,8 @@ data class Lecture(
         init {
             SessionRules.checkActiveConstraints(date, topic, location, teachers)
         }
+
+        override fun createRescheduledSession(newDate: LocalDate) = this.copy(date = newDate)
 }
 
 data class Practice(
@@ -75,6 +98,7 @@ data class Practice(
     init {
         SessionRules.checkActiveConstraints(date, topic, location, teachers)
     }
+    override fun createRescheduledSession(newDate: LocalDate) = this.copy(date = newDate)
 }
 
 data class Exam(
@@ -87,6 +111,7 @@ data class Exam(
     init {
         SessionRules.checkActiveConstraints(date, topic, location, teachers, 2)
     }
+    override fun createRescheduledSession(newDate: LocalDate) = this.copy(date = newDate)
 }
 
 data class Cancelled(
