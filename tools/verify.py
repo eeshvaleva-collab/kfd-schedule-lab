@@ -109,6 +109,60 @@ def verify(huge=False):
             execute("four-types." + kind, ["type", "--type", kind, "--file", str(file)],
                     {"code": 0, "bytes": len(expected), "sha256": hashlib.sha256(expected).hexdigest()})
 
+        my_dirty_file = Path(folder) / "edge.errors.txt"
+        dirty_records = [
+            "2026-10-05|LECTURE| TopicWithLeadingSpace|Room 312|Portnov",
+            "2026-10-05|LECTURE|TopicWithControlChar\t|Room 312|Portnov",
+            "2026-10-05|PRACTICE|Valid Topic|-|Portnov",
+            "2026-10-05|CANCELLED|Valid Cancellation|Room 111|-",
+            "2026-10-15|EXAM|Oral Exam|Room 401|Portnov, Stepanova, Portnov",
+            "2026-10-15|LECTURE|Valid Lecture|Room 401|Portnov, ,Sidorov"
+        ]
+        my_dirty_file.write_bytes(("\n".join(dirty_records) + "\n").encode("utf-8"))
+
+        expected_errors = (
+            "line 1: value has trailing or leading whitespaces\n"
+            "line 2: value contains control characters\n"
+            "line 3: active session location cannot be \"-\"\n"
+            "line 4: cancelled session location and teachers fields must be \"-\"\n"
+            "line 5: value has trailing or leading whitespaces\n"
+            "line 6: invalid teacher name\n"
+            "Rejected: 6 of 6\n"
+        ).encode("utf-8")
+
+        execute("edge.errors", ["errors", "--file", str(my_dirty_file)],
+                {"code": 1, "bytes": len(expected_errors), "sha256": hashlib.sha256(expected_errors).hexdigest()})
+
+        my_clean_file = Path(folder) / "edge.clean.txt"
+        clean_records = [
+            "2026-10-05|LECTURE|Math - Logic|Room-312|Portnov-Anokhin",
+            "2026-10-08|PRACTICE|Domain modeling (advanced)|Room 312|Anokhin,Portnov,Sidorov",
+            "2026-10-19|CANCELLED|Lecture postponed due to weather|-|-",
+            "2026-10-20|EXAM|Test|R|A,B"
+        ]
+        my_clean_file.write_bytes(("\n".join(clean_records) + "\n").encode("utf-8"))
+
+
+        expected_period = (
+            "2026-10-05 | LECTURE | Math - Logic | Room-312\n"
+            "2026-10-08 | PRACTICE | Domain modeling (advanced) | Room 312\n"
+            "2026-10-19 | CANCELLED | Lecture postponed due to weather | -\n"
+            "2026-10-20 | EXAM | Test | R\n"
+            "Total: 4\n"
+        ).encode("utf-8")
+
+        execute("edge.clean.period", ["period", "--file", str(my_clean_file), "--from", "2026-09-28", "--to", "2027-05-13"],
+                {"code": 0, "bytes": len(expected_period), "sha256": hashlib.sha256(expected_period).hexdigest()})
+
+
+        expected_type = (
+            "2026-10-20 | EXAM | Test | R | A, B\n"
+            "Total: 1\n"
+        ).encode("utf-8")
+
+        execute("edge.clean.type", ["type", "--type", "EXAM", "--file", str(my_clean_file)],
+                {"code": 0, "bytes": len(expected_type), "sha256": hashlib.sha256(expected_type).hexdigest()})
+
     report = {"cases": results, "passed": all(r["passed"] for r in results)}
     (OUTPUT / "acceptance.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0 if report["passed"] else 1

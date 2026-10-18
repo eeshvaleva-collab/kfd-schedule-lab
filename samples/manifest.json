@@ -112,6 +112,14 @@
       "bytes": 73,
       "sha256": "6606ee082d9a6324cc52b9798831b048c66d424a036707b841ed4c98a2658ee2"
     },
+    "edge.txt": {
+      "bytes": 337,
+      "sha256": "9ba22a14d8b7d10c1a111f978b0ac5afa28dd7e4a4242a278c484a96e21cd715"
+    },
+    "edge_success.txt": {
+      "bytes": 221,
+      "sha256": "9a9cd6ca9f1b0909b3bb4f90a3ad572763d9c933dc89ff242161401a443967cc"
+    },
     "empty.errors.expected": {
       "bytes": 17,
       "sha256": "fe055fe3ba58e7a605e9b42606b2e26303b4a74d71dfb127a7b56c5a0184d3f7"
@@ -127,6 +135,14 @@
     "empty.type.expected": {
       "bytes": 9,
       "sha256": "22b877ca1c56d233cfcd292a680ae792e300a5dd5878321697c1ff0492e835cf"
+    },
+    "priority.errors.expected": {
+      "bytes": 226,
+      "sha256": "eb053ec876b8911e34ed6099198a1f881929dc6ff39bfca6d93ef31aa9ee2c22"
+    },
+    "priority.txt": {
+      "bytes": 230,
+      "sha256": "71523150f60bc9d7a3002c8c5412d79dab25ea5a91079682215915951fbfbc8b"
     }
   }
 }
