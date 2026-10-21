@@ -21,7 +21,7 @@ sealed interface ParseError {
     data class EmptyValue(val rawValue: String) : ParseError
     data class EmptyOrInvalidDate(val rawValue: String) : ParseError
     data class UnknownSessionType(val rawValue: String) : ParseError
-    data class InsufficientExamTeachers(val rawValue: String) : ParseError
+    data class InsufficientExamTeachers(val teachersCount: Int) : ParseError
 
     sealed interface OthersViolation : ParseError {
         data class ContainsControlCharacters(val rawValue: String) : OthersViolation
@@ -31,7 +31,7 @@ sealed interface ParseError {
         data class InvalidTeacherName(val rawValue: String) : OthersViolation
         data class DuplicateTeachers(val rawValue: String) : OthersViolation
         data class DomainError(val rawValue: String) : OthersViolation
-        data class InsufficientActiveTeachers(val rawValue: String, val typeName: String) : ParseError
+        data class InsufficientActiveTeachers(val teachersCount: Int, val typeName: String) : ParseError
     }
 }
 
@@ -47,7 +47,6 @@ fun ParseError.logMessage(): String = when (this) {
     is ParseError.EmptyOrInvalidDate -> "invalid date \"${escape(this.rawValue)}\""
     is ParseError.UnknownSessionType -> "unknown session type \"${escape(this.rawValue)}\""
     is ParseError.InsufficientExamTeachers -> {
-        val teachersCount = if (this.rawValue == "-") 0 else this.rawValue.split(',').size
         "type \"EXAM\" requires at least 2 teachers, got $teachersCount"
     }
     is ParseError.OthersViolation.ContainsControlCharacters -> "value contains control characters"
@@ -57,8 +56,7 @@ fun ParseError.logMessage(): String = when (this) {
     is ParseError.OthersViolation.InvalidTeacherName -> "invalid teacher name"
     is ParseError.OthersViolation.DuplicateTeachers -> "teachers list contains duplicates"
     is ParseError.OthersViolation.InsufficientActiveTeachers -> {
-        val teachersCount = if (this.rawValue == "-") 0 else this.rawValue.split(',').size
-        "type requires at least 2 teachers, got $teachersCount"
+        "type $typeName requires at least 2 teachers, got $teachersCount"
     }
     is ParseError.OthersViolation.DomainError -> escape(this.rawValue)
 }

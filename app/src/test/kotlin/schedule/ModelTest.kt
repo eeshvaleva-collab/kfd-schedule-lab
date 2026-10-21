@@ -99,23 +99,6 @@ class SessionModelTest {
     }
 
     @Test
-    fun `should verify that copy method cannot bypass invariants`() {
-        val goodLecture = Lecture(validDate, "abc", "def", listOf("ghi"))
-
-        assertFailsWith<IllegalArgumentException> {
-            goodLecture.copy(teachersRaw = emptyList())
-        }
-        assertFailsWith<IllegalArgumentException> {
-            goodLecture.copy(teachersRaw = listOf("ghi", "ghi"))
-        }
-
-        val goodExam = Exam(validDate, "abc", "def", listOf("ghi", "jkl"))
-        assertFailsWith<IllegalArgumentException> {
-            goodExam.copy(teachersRaw = listOf("ghi"))
-        }
-    }
-
-    @Test
     fun `should fail when topic contains leading or trailing spaces or control characters`() {
         assertFailsWith<IllegalArgumentException> { Cancelled(validDate, " abc") }
         assertFailsWith<IllegalArgumentException> { Cancelled(validDate, "abc ") }

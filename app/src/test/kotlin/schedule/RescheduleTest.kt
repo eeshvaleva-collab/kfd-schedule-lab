@@ -9,8 +9,8 @@ class RescheduleTest {
 
     @Test
     fun `should create new lecture on reschedule and leave original unchanged`() {
-        val originalDate = LocalDate.of(2026, 11, 5)
-        val newDate = LocalDate.of(2026, 12, 12)
+        val originalDate = LocalDate.now().plusDays(7)
+        val newDate = LocalDate.now().plusDays(1)
 
         val originalLecture = Lecture(originalDate, "Classes", "Room 312", listOf("Portnov"))
 
@@ -28,9 +28,11 @@ class RescheduleTest {
 
     @Test
     fun `should return failure when rescheduling cancelled session`() {
-        val cancelled = Cancelled(LocalDate.of(2026, 10, 19), "Lecture postponed")
+        val originalDate = LocalDate.now().plusDays(7)
+        val newDate = LocalDate.now().plusDays(1)
 
-        val result = cancelled.reschedule(LocalDate.of(2026, 10, 26))
+        val cancelled = Cancelled(originalDate, "Lecture postponed")
+        val result = cancelled.reschedule(newDate)
 
         assertTrue(result is RescheduleResult.Failure)
     }

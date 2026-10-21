@@ -9,7 +9,7 @@ sealed interface ParseResult <out T> {
      ) : ParseResult<T>
 
     data class FailureParse(
-        var error: ParseError
+        val error: ParseError
     ) : ParseResult<Nothing>
 }
 
@@ -20,6 +20,31 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
     }
 }
 
+//Порядок проверок
+//На одну строку возвращается одна ошибка. Используйте следующий приоритет:
+//
+//Нет | — неверный разделитель.
+//Полей не пять — неверное количество полей.
+//Есть пустое или полностью пробельное поле — первое такое поле в порядке следования.
+//Неверный формат или значение даты.
+//Неизвестный тип занятия.
+//У сдачи менее двух непустых и непробельных элементов списка, отличных от -.
+//Остальные нарушения домена.
+//Внутри пункта 7 проверяйте последовательно:
+//
+//Управляющие символы.
+//Внешние пробельные символы.
+//Неверные поля отмены.
+//Недопустимое место действующего занятия.
+//Недопустимые элементы списка преподавателей.
+//Повторные имена преподавателей.
+
+
+//Порядок проверок (K10).
+//Парсер проверяет шаг 7 по полям, а не по видам нарушений, причём сначала преподавателей, потом тему и место.
+//Пример: на 2026-10-05|EXAM| Topic|Room 1|Ivanov,Ivanov программа выдаст ошибку «повтор имени» вместо ошибки «пробелы в теме».
+//У отмены поля места и преподавателей проверяются раньше темы.
+//В эталонах таких строк нет, поэтому verify.py ошибку не ловит.
 class Parser {
     fun parse(line: String, delimiter: Char = '|'): ParseResult<Session> {
         val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = validateGeneral(line, delimiter = delimiter).check(error = { return ParseResult.FailureParse(it) })
@@ -93,13 +118,17 @@ class Parser {
         return ParseResult.FailureParse(ParseError.UnknownSessionType(typeRaw))
     }
 
+//   2. Число преподавателей в сообщении (K11).
+//   Форматтер пересчитывает его через split(',').size, а не так, как парсер.
+//   На Ivanov,- получится «requires at least 2 teachers, got 2».//
     private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
         val teachers = teachersRaw.split(',')
         val validTeachersCount = teachers.count { it.isNotBlank() && it.trim() != "-"}
 
         if (sessionType == SessionType.EXAM && (validTeachersCount < 2)) {
-                return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
+                return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(validTeachersCount))
         }
+    // check teachers count for all active sessions
         for (teacher in teachers){
             if (teacher.any{it.isISOControl()}){
                 return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(teachersRaw))
@@ -134,3 +163,13 @@ class Parser {
 }
 
 
+fun main() {
+    val line: String = "2026-10-05|LECTURE|TOPIC|Room 1|fg"
+    val res = Parser().parse(line)
+    res.check { error ->
+        println(error.logMessage())
+        return
+    }
+
+
+}
