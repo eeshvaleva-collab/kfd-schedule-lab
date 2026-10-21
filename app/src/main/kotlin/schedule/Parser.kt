@@ -98,11 +98,10 @@ class Parser {
 
     private fun parseDate(dateStr: String): ParseResult<LocalDate> {
         return try {
-            if (dateStr.startsWith("0000")) {
+            val parsedDate = LocalDate.parse(dateStr)
+            if (parsedDate.year !in 1..9999){
                 return ParseResult.FailureParse(ParseError.EmptyOrInvalidDate(dateStr))
             }
-            val parsedDate = LocalDate.parse(dateStr)
-
             return ParseResult.SuccessParse(parsedDate)
         } catch (e: Exception) {
             ParseResult.FailureParse(ParseError.EmptyOrInvalidDate(dateStr))
