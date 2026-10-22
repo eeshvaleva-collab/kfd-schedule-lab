@@ -175,10 +175,3 @@ class Cancelled private constructor(
         }
     }
 }
-
-//fun main(){
-//    val s1 = Lecture(LocalDate.of(2027, 1, 1), "wdf", "sfff", listOf("ssss"))
-//    val s2 = s1.reschedule(LocalDate.of(2027, 1, 1))
-//    System.err.println(s2)
-//    return
-//}
