@@ -74,7 +74,7 @@ class AuditedSessionRepository(
         auditLog = java.util.List.copyOf(updatedLog)
     }
     override fun all(): List<Session> {
-        return java.util.Collections.unmodifiableList(delegate.all().toMutableList())
+        return delegate.all()
     }
 }
 

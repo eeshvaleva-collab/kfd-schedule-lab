@@ -89,6 +89,7 @@ class SessionModelTest {
     }
 
     @Test
+    @Suppress("UNCHECKED_CAST")
     fun `should protect state by returning immutable list through teachers property`() {
         val lecture = Lecture(validDate, "abc", "def", listOf("ghi", "jkl"))
         val internalList = lecture.teachers
@@ -109,5 +110,29 @@ class SessionModelTest {
     fun `should fail when active session location is blank or dash`() {
         assertFailsWith<IllegalArgumentException> { Lecture(validDate, "abc", "   ", listOf("def")) }
         assertFailsWith<IllegalArgumentException> { Lecture(validDate, "abc", "-", listOf("def")) }
+    }
+
+    @Test
+    fun `should fail when teacher name contains leading or trailing spaces`() {
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf(" Ivanov"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf("Ivanov "))
+        }
+    }
+
+    @Test
+    fun `should fail when teacher name contains control characters`() {
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf("Ivan\nov"))
+        }
+    }
+
+    @Test
+    fun `should fail when teacher name is exact dash`() {
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf("-"))
+        }
     }
 }

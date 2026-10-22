@@ -48,8 +48,8 @@ fun ParseError.logMessage(): String = when (this) {
     is ParseError.InsufficientExamTeachers -> {
         "type \"EXAM\" requires at least 2 teachers, got $teachersCount"
     }
-    is ParseError.OthersViolation.ContainsControlCharacters -> "$fieldName value contains control characters"
-    is ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces -> "$fieldName value has trailing or leading whitespaces"
+    is ParseError.OthersViolation.ContainsControlCharacters -> "$fieldName field contains control characters"
+    is ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces -> "$fieldName field has trailing or leading whitespaces"
     is ParseError.OthersViolation.InvalidCancelledField -> "cancelled session $fieldName field must be \"-\""
     is ParseError.OthersViolation.InvalidActiveLocation -> "active session location cannot be \"-\""
     is ParseError.OthersViolation.InvalidTeacherName -> "invalid teacher name"

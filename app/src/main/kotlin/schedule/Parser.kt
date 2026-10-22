@@ -45,19 +45,20 @@ class Parser {
             }
         }
 
-        checkControlCharacters(listOf(topic, location, teachersRaw)).check {
-            return ParseResult.FailureParse(it)
-        }
+        checkControlCharacters(topic, "topic").check { return ParseResult.FailureParse(it) }
+        checkControlCharacters(location, "location").check { return ParseResult.FailureParse(it) }
+        checkControlCharacters(teachersRaw, "teachers").check { return ParseResult.FailureParse(it) }
 
-        checkExternalWhitespaces(listOf(topic, location) + teachersList).check {
-            return ParseResult.FailureParse(it)
-        }
+        checkExternalWhitespaces(topic, "topic").check { return ParseResult.FailureParse(it) }
+        checkExternalWhitespaces(location, "location").check { return ParseResult.FailureParse(it) }
+        checkExternalWhitespaces(teachersRaw, "teachers").check { return ParseResult.FailureParse(it) }
+
 
         if (type == SessionType.CANCELLED) {
             if (location != "-" || teachersRaw != "-") {
                 return ParseResult.FailureParse(
                     ParseError.OthersViolation.InvalidCancelledField(
-                        if (location != "-") location else teachersRaw
+                        if (location != "-") "location" else "teachers"
                     )
                 )
             }
@@ -129,7 +130,7 @@ class Parser {
     private fun parseTeachers(teachersRaw: String): ParseResult<List<String>> {
         val teachers = teachersRaw.split(',')
 
-        if (teachers.any { it.isBlank() || it.trim() == "-" }) {
+        if (teachers.any { it.isBlank() || it.trim() == "-" || (it.trim() != it) }) {
             return ParseResult.FailureParse(ParseError.OthersViolation.InvalidTeacherName)
         }
         if (teachers.toSet().size != teachers.size) {
@@ -138,22 +139,16 @@ class Parser {
 
         return ParseResult.SuccessParse(teachers)
     }
-    private fun checkControlCharacters(values: List<String>): ParseResult<Unit> {
-        val fieldNames = listOf("topic", "location", "teachers")
-        for (index in values.indices) {
-            if (values[index].any { it.isISOControl() }) {
-                return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(fieldNames[index]))
-            }
+    private fun checkControlCharacters(value: String, fieldName: String): ParseResult<Unit> {
+        if (value.any { it.isISOControl() }) {
+                return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(fieldName))
         }
         return ParseResult.SuccessParse(Unit)
     }
 
-    private fun checkExternalWhitespaces(values: List<String>): ParseResult<Unit> {
-        val fieldNames = listOf("topic", "location", "teachers")
-        for (index in values.indices){
-            if (values[index].trim() != values[index]) {
-                return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(fieldNames[index]))
-            }
+    private fun checkExternalWhitespaces(value: String, fieldName: String): ParseResult<Unit> {
+        if (value.trim() != value) {
+                return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(fieldName))
         }
         return ParseResult.SuccessParse(Unit)
     }
