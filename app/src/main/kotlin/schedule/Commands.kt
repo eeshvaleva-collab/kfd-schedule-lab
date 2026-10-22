@@ -23,7 +23,7 @@ fun runPeriod(command: Command.Period): Int {
         }
         else if (result is FileLineResult.Success && result.session.date in command.from..command.to) {
             totalLines++
-           println(result.session.formString())
+            println(result.session.formString())
         }
     }
     println("Total: $totalLines")

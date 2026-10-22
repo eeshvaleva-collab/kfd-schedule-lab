@@ -113,23 +113,35 @@ def verify(huge=False):
         if "--custom" in sys.argv:
             my_dirty_file = Path(folder) / "edge.errors.txt"
             dirty_records = [
-                "2026-10-05|LECTURE| TopicWithLeadingSpace|Room 312|Portnov",
+                "2026-10-05|LECTURE| TopicWithLeadingSpace|Room 312|Ivanov",
                 "2026-10-05|LECTURE|TopicWithControlChar\t|Room 312|Portnov",
                 "2026-10-05|PRACTICE|Valid Topic|-|Portnov",
                 "2026-10-05|CANCELLED|Valid Cancellation|Room 111|-",
-                "2026-10-15|EXAM|Oral Exam|Room 401|Portnov, Stepanova, Portnov",
-                "2026-10-15|LECTURE|Valid Lecture|Room 401|Portnov, ,Sidorov"
+                "2026-10-15|EXAM|Oral Exam|Room 401| Portnov,Stepanova,Portnov",
+                "2026-10-15|LECTURE|Valid Lecture|Room 401|Portnov, ,Sidorov",
+                "2026-15-05|EXAM|Topic|Room 1|Ivanov,Ivanov",
+                "2026-10-05|EXAM|Topic|Room 1|Ivanov,Ivanov",
+                "2026-10-05|EXAM| Topic|Room 1|Ivanov,Ivanov",
+                "2026-13-45|SEMINAR|Topic|Room 1|Ivanov",
+                "2026-10-05|EXAM|Topic|Room 1|Ivanov",
+                "2026-10-05|EXAM|Topic|Room 1|Ivanov,-"
             ]
             my_dirty_file.write_bytes(("\n".join(dirty_records) + "\n").encode("utf-8"))
 
             expected_errors = (
-                "line 1: value has trailing or leading whitespaces\n"
-                "line 2: value contains control characters\n"
+                "line 1: topic field has trailing or leading whitespaces\n"
+                "line 2: topic field contains control characters\n"
                 "line 3: active session location cannot be \"-\"\n"
-                "line 4: cancelled session location and teachers fields must be \"-\"\n"
-                "line 5: value has trailing or leading whitespaces\n"
+                "line 4: cancelled session location field must be \"-\"\n"
+                "line 5: teachers field has trailing or leading whitespaces\n"
                 "line 6: invalid teacher name\n"
-                "Rejected: 6 of 6\n"
+                "line 7: invalid date \"2026-15-05\"\n"
+                "line 8: teachers list contains duplicates\n"
+                "line 9: topic field has trailing or leading whitespaces\n"
+                "line 10: invalid date \"2026-13-45\"\n"
+                "line 11: type \"EXAM\" requires at least 2 teachers, got 1\n"
+                "line 12: type \"EXAM\" requires at least 2 teachers, got 1\n"
+                "Rejected: 12 of 12\n"
             ).encode("utf-8")
 
             execute("edge.errors", ["errors", "--file", str(my_dirty_file)],
@@ -137,10 +149,11 @@ def verify(huge=False):
 
             my_clean_file = Path(folder) / "edge.clean.txt"
             clean_records = [
-                "2026-10-05|LECTURE|Math - Logic|Room-312|Portnov-Anokhin",
-                "2026-10-08|PRACTICE|Domain modeling (advanced)|Room 312|Anokhin,Portnov,Sidorov",
+                "2026-10-05|LECTURE|Math - Logic|Room-312|Ivanov",
+                "2026-10-08|PRACTICE|Domain modeling (advanced)|Room 312|F,G,V",
                 "2026-10-19|CANCELLED|Lecture postponed due to weather|-|-",
-                "2026-10-20|EXAM|Test|R|A,B"
+                "2026-10-20|EXAM|Test|R|A,B",
+                "2026-11-20|LECTURE|Deep Learning|Lab 4|Ivanov,Petrov"
             ]
             my_clean_file.write_bytes(("\n".join(clean_records) + "\n").encode("utf-8"))
 
@@ -150,7 +163,8 @@ def verify(huge=False):
                 "2026-10-08 | PRACTICE | Domain modeling (advanced) | Room 312\n"
                 "2026-10-19 | CANCELLED | Lecture postponed due to weather | -\n"
                 "2026-10-20 | EXAM | Test | R\n"
-                "Total: 4\n"
+                "2026-11-20 | LECTURE | Deep Learning | Lab 4\n"
+                "Total: 5\n"
             ).encode("utf-8")
 
             execute("edge.clean.period", ["period", "--file", str(my_clean_file), "--from", "2026-09-28", "--to", "2027-05-13"],

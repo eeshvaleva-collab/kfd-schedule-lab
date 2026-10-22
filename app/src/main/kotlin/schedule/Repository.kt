@@ -37,7 +37,7 @@ class AuditedSessionRepository(
 ) : SessionRepository by delegate {
     private var currentStats = Stats()
     val stats: Stats
-        get() = currentStats
+        get() = currentStats.copy(sessions = delegate.all().size)
     var auditLog: List<AuditEvent> = emptyList()
         private set
 
@@ -74,7 +74,7 @@ class AuditedSessionRepository(
         auditLog = java.util.List.copyOf(updatedLog)
     }
     override fun all(): List<Session> {
-        return java.util.Collections.unmodifiableList(delegate.all().toMutableList())
+        return delegate.all()
     }
 }
 

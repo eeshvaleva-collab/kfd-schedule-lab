@@ -137,4 +137,32 @@ class ParserValidationTest {
         assertIs<ParseResult.FailureParse>(result)
         assertIs<ParseError.EmptyOrInvalidDate>(result.error)
     }
+
+    @Test
+    fun `should fail with invalid teacher name when list contains empty spaces between commas`() {
+        val line = "2026-10-15|LECTURE|Valid Lecture|Room 401|Portnov, ,Sidorov"
+        val result = parser.parse(line)
+
+        assertIs<ParseResult.FailureParse>(result)
+        assertIs<ParseError.OthersViolation.InvalidTeacherName>(result.error)
+    }
+
+    @Test
+    fun `should prioritize field count error over empty field values`() {
+        val line = "2026-10-05||Topic|||ExtraField"
+        val result = parser.parse(line)
+
+        assertIs<ParseResult.FailureParse>(result)
+        assertIs<ParseError.InvalidFieldCount>(result.error)
+        assertEquals(6, result.error.rawValue.split('|').size)
+    }
+
+    @Test
+    fun `should format logged message with correct escaping for control characters and quotes`() {
+        val errorWithQuotes = ParseError.EmptyValue("topic\"name")
+        assertEquals("empty required field \"topic\\\"name\"", errorWithQuotes.logMessage())
+
+        val errorWithControlChar = ParseError.UnknownSessionType("ABC\tDEF")
+        assertEquals("unknown session type \"ABC\\u0009DEF\"", errorWithControlChar.logMessage())
+    }
 }

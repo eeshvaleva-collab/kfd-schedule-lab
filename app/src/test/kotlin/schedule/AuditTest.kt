@@ -9,6 +9,7 @@ class AuditedRepositoryTest {
     private val validDate = LocalDate.of(2026, 10, 5)
     private val session1 = Cancelled(validDate, "Topic 1")
     private val session2 = Cancelled(validDate, "Topic 2")
+    private val dummySession = Cancelled(validDate, "Test Topic")
 
     @Test
     fun `should log single addition and update stats correctly`() {
@@ -79,5 +80,86 @@ class AuditedRepositoryTest {
 
         auditedRepo.add(session2)
         assertEquals(1, snapshot.size)
+    }
+
+    @Test
+    fun `should correctly accumulate sessions and events when starting with non-empty repository`() {
+        val baseRepository = SessionRepositoryImpl()
+        val lecture1 = Lecture(validDate, "Topic 1", "Room 1", listOf("Ivanov"))
+        val lecture2 = Lecture(validDate, "Topic 2", "Room 2", listOf("Petrov"))
+
+        baseRepository.add(lecture1)
+        baseRepository.add(lecture2)
+
+        val auditedRepository = AuditedSessionRepository(baseRepository)
+        val newLecture = Lecture(validDate, "New Topic", "Room 3", listOf("Sidorov"))
+
+        auditedRepository.add(newLecture)
+
+        val stats = auditedRepository.stats
+        assertEquals(3, auditedRepository.all().size)
+        assertEquals(1, stats.added)
+        assertEquals(1, stats.auditEvents)
+    }
+
+    @Test
+    fun `stats returns zeros when repository is empty`() {
+        val innerRepo = SessionRepositoryImpl()
+        val auditedRepo = AuditedSessionRepository(innerRepo)
+
+        val expected = Stats(sessions = 0, added = 0, auditEvents = 0)
+        assertEquals(expected, auditedRepo.stats)
+    }
+
+    @Test
+    fun `single add increments sessions, added count and logs event`() {
+        val innerRepo = SessionRepositoryImpl()
+        val auditedRepo = AuditedSessionRepository(innerRepo)
+
+        auditedRepo.add(dummySession)
+
+        val stats = auditedRepo.stats
+        assertEquals(1, stats.sessions)
+        assertEquals(1, stats.added)
+        assertEquals(1, stats.auditEvents)
+
+        assertEquals(1, auditedRepo.auditLog.size)
+        assertEquals(OperationType.ADD, auditedRepo.auditLog[0].operation)
+        assertEquals(1, auditedRepo.auditLog[0].count)
+    }
+
+    @Test
+    fun `batch addAll increments statistics by batch size as a single event`() {
+        val innerRepo = SessionRepositoryImpl()
+        val auditedRepo = AuditedSessionRepository(innerRepo)
+        val batch = listOf(dummySession, dummySession, dummySession)
+
+        auditedRepo.addAll(batch)
+
+        val stats = auditedRepo.stats
+        assertEquals(3, stats.sessions)
+        assertEquals(3, stats.added)
+        assertEquals(1, stats.auditEvents)
+
+        assertEquals(1, auditedRepo.auditLog.size)
+        assertEquals(OperationType.ADD_ALL, auditedRepo.auditLog[0].operation)
+        assertEquals(3, auditedRepo.auditLog[0].count)
+    }
+
+    @Test
+    fun `addAll with empty list creates audit event with zero count`() {
+        val innerRepo = SessionRepositoryImpl()
+        val auditedRepo = AuditedSessionRepository(innerRepo)
+
+        auditedRepo.addAll(emptyList())
+
+        val stats = auditedRepo.stats
+        assertEquals(0, stats.sessions)
+        assertEquals(0, stats.added)
+        assertEquals(1, stats.auditEvents)
+
+        assertEquals(1, auditedRepo.auditLog.size)
+        assertEquals(OperationType.ADD_ALL, auditedRepo.auditLog[0].operation)
+        assertEquals(0, auditedRepo.auditLog[0].count)
     }
 }

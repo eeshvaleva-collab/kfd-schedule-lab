@@ -5,9 +5,21 @@ import java.time.LocalDate
 sealed interface Session {
     val date: LocalDate
     val topic: String
+    val sessionType: String
+
+    //System.err.println
+    fun reschedule(newDate: LocalDate, now: LocalDate = LocalDate.now()): RescheduleResult<ActiveSession> = when {
+        this !is ActiveSession -> RescheduleResult.Failure(RescheduleError.CancelledSession)
+
+        newDate.year !in 1..9999 -> RescheduleResult.Failure(RescheduleError.InvalidYear)
+        newDate == date -> RescheduleResult.Failure(RescheduleError.SameDate)
+        newDate <= now -> RescheduleResult.Failure(RescheduleError.DateNotInFuture)
+
+        else -> RescheduleResult.Success(createRescheduledSession(newDate))
+    }
 
     fun formString(showTeachers: Boolean = false): String {
-        val typeName = this::class.simpleName?.uppercase()
+        val typeName = this.sessionType
         val locationStr = if (this is ActiveSession) this.location else "-"
 
         val base = "$date | $typeName | $topic | $locationStr"
@@ -15,34 +27,53 @@ sealed interface Session {
             val teachersStr = if (this is ActiveSession) this.teachers.joinToString(", ") else "-"
             "$base | $teachersStr"
         } else base
-
-    }
-
-    fun reschedule(newDate: LocalDate): RescheduleResult<ActiveSession> {
-        if (this !is ActiveSession){
-            return RescheduleResult.Failure("Cannot reschedule a cancelled session")
-        }
-        if (newDate <= LocalDate.now()) {
-            return RescheduleResult.Failure("New date should be in the future")
-        }
-        if (newDate == this.date) {
-            return RescheduleResult.Failure("New date can't be the same as the old date")
-        }
-        val session = createRescheduledSession(newDate)
-        return RescheduleResult.Success(session)
     }
 }
 
 sealed interface RescheduleResult<out T> {
     data class Success<out T>(val value: T) : RescheduleResult<T>
-    data class Failure(val message: String) : RescheduleResult<Nothing>
+    data class Failure(val error: RescheduleError) : RescheduleResult<Nothing>
 }
 
+sealed interface RescheduleError {
+    data object CancelledSession : RescheduleError
+    data object InvalidYear : RescheduleError
+    data object DateNotInFuture : RescheduleError
+    data object SameDate : RescheduleError
+}
+
+fun RescheduleError.logMessage(): String = when (this) {
+    is RescheduleError.CancelledSession -> "Cannot reschedule a cancelled session"
+    is RescheduleError.DateNotInFuture -> "New date must be in the future"
+    is RescheduleError.InvalidYear -> "Year should be in between 1 - 9999"
+    is RescheduleError.SameDate -> "New date can't be the same as the old date"
+}
 sealed interface ActiveSession : Session {
     val location: String
     val teachers: List<String>
 
     fun createRescheduledSession(newDate: LocalDate): ActiveSession
+}
+
+abstract class BaseSession : Session {
+    override fun equals(other: Any?): Boolean = when{
+        this === other -> true
+        other == null || other !is Session || this.sessionType != other.sessionType -> false
+        date != other.date || topic != other.topic -> false
+        this is ActiveSession && other is ActiveSession ->
+            location == other.location && teachers == other.teachers
+        else -> true
+    }
+
+    override fun hashCode(): Int {
+        var result = date.hashCode()
+        result = 31 * result + topic.hashCode()
+        if (this is ActiveSession) {
+            result = 31 * result + location.hashCode()
+            result = 31 * result + teachers.hashCode()
+        }
+        return result
+    }
 }
 
 internal object SessionRules {
@@ -74,51 +105,73 @@ internal object SessionRules {
     }
 }
 
-data class Lecture(
+class Lecture private constructor(
     override val date: LocalDate,
     override val topic: String,
     override val location: String,
-    private val teachersRaw: List<String>
-) : ActiveSession {
-        override val teachers: List<String> = java.util.List.copyOf(teachersRaw)
-        init {
+    override val teachers: List<String>
+) : BaseSession(), ActiveSession {
+    override val sessionType: String = "LECTURE"
+    override fun createRescheduledSession(newDate: LocalDate) =
+        Lecture(newDate, topic, location, teachers)
+
+    companion object {
+        operator fun invoke(date: LocalDate, topic: String, location: String, teachersRaw: List<String>): Lecture {
+            val teachers: List<String> = java.util.List.copyOf(teachersRaw)
             SessionRules.checkActiveConstraints(date, topic, location, teachers)
+            return Lecture(date, topic, location, teachers)
         }
-
-        override fun createRescheduledSession(newDate: LocalDate) = this.copy(date = newDate)
+    }
 }
 
-data class Practice(
+class Practice private constructor(
     override val date: LocalDate,
     override val topic: String,
     override val location: String,
-    private val teachersRaw: List<String>
-) : ActiveSession {
-    override val teachers: List<String> = java.util.List.copyOf(teachersRaw)
-    init {
-        SessionRules.checkActiveConstraints(date, topic, location, teachers)
+    override val teachers: List<String>
+) : BaseSession(), ActiveSession {
+    override val sessionType: String = "PRACTICE"
+    override fun createRescheduledSession(newDate: LocalDate) =
+        Practice(newDate, topic, location, teachers)
+
+    companion object {
+        operator fun invoke(date: LocalDate, topic: String, location: String, teachersRaw: List<String>): Practice {
+            val teachers: List<String> = java.util.List.copyOf(teachersRaw)
+            SessionRules.checkActiveConstraints(date, topic, location, teachers)
+            return Practice(date, topic, location, teachers)
+        }
     }
-    override fun createRescheduledSession(newDate: LocalDate) = this.copy(date = newDate)
 }
 
-data class Exam(
+class Exam private constructor(
     override val date: LocalDate,
     override val topic: String,
     override val location: String,
-    private val teachersRaw: List<String>
-) : ActiveSession {
-    override val teachers: List<String> = java.util.List.copyOf(teachersRaw)
-    init {
-        SessionRules.checkActiveConstraints(date, topic, location, teachers, 2)
+    override val teachers: List<String>
+) : BaseSession(), ActiveSession {
+    override val sessionType: String = "EXAM"
+    override fun createRescheduledSession(newDate: LocalDate) =
+        Exam(newDate, topic, location, teachers)
+
+    companion object {
+        operator fun invoke(date: LocalDate, topic: String, location: String, teachersRaw: List<String>): Exam {
+            val teachers: List<String> = java.util.List.copyOf(teachersRaw)
+            SessionRules.checkActiveConstraints(date, topic, location, teachers, minTeachers=2)
+            return Exam(date, topic, location, teachers)
+        }
     }
-    override fun createRescheduledSession(newDate: LocalDate) = this.copy(date = newDate)
 }
 
-data class Cancelled(
+class Cancelled private constructor(
     override val date: LocalDate,
     override val topic: String
-) : Session {
-    init {
-        SessionRules.checkCommonConstraints(date, topic)
+) : BaseSession() {
+    override val sessionType: String = "CANCELLED"
+
+    companion object {
+        operator fun invoke(date: LocalDate, topic: String): Cancelled {
+            SessionRules.checkCommonConstraints(date, topic)
+            return Cancelled(date, topic)
+        }
     }
 }

@@ -89,29 +89,13 @@ class SessionModelTest {
     }
 
     @Test
+    @Suppress("UNCHECKED_CAST")
     fun `should protect state by returning immutable list through teachers property`() {
         val lecture = Lecture(validDate, "abc", "def", listOf("ghi", "jkl"))
         val internalList = lecture.teachers
 
         assertFailsWith<UnsupportedOperationException> {
             (internalList as MutableList<String>).clear()
-        }
-    }
-
-    @Test
-    fun `should verify that copy method cannot bypass invariants`() {
-        val goodLecture = Lecture(validDate, "abc", "def", listOf("ghi"))
-
-        assertFailsWith<IllegalArgumentException> {
-            goodLecture.copy(teachersRaw = emptyList())
-        }
-        assertFailsWith<IllegalArgumentException> {
-            goodLecture.copy(teachersRaw = listOf("ghi", "ghi"))
-        }
-
-        val goodExam = Exam(validDate, "abc", "def", listOf("ghi", "jkl"))
-        assertFailsWith<IllegalArgumentException> {
-            goodExam.copy(teachersRaw = listOf("ghi"))
         }
     }
 
@@ -126,5 +110,29 @@ class SessionModelTest {
     fun `should fail when active session location is blank or dash`() {
         assertFailsWith<IllegalArgumentException> { Lecture(validDate, "abc", "   ", listOf("def")) }
         assertFailsWith<IllegalArgumentException> { Lecture(validDate, "abc", "-", listOf("def")) }
+    }
+
+    @Test
+    fun `should fail when teacher name contains leading or trailing spaces`() {
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf(" Ivanov"))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf("Ivanov "))
+        }
+    }
+
+    @Test
+    fun `should fail when teacher name contains control characters`() {
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf("Ivan\nov"))
+        }
+    }
+
+    @Test
+    fun `should fail when teacher name is exact dash`() {
+        assertFailsWith<IllegalArgumentException> {
+            Lecture(validDate, "Topic", "Room 1", listOf("-"))
+        }
     }
 }

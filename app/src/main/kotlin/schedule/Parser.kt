@@ -9,7 +9,7 @@ sealed interface ParseResult <out T> {
      ) : ParseResult<T>
 
     data class FailureParse(
-        var error: ParseError
+        val error: ParseError
     ) : ParseResult<Nothing>
 }
 
@@ -22,23 +22,58 @@ inline fun <T> ParseResult<T>.check(error: (ParseError) -> Nothing) : T{
 
 class Parser {
     fun parse(line: String, delimiter: Char = '|'): ParseResult<Session> {
-        val (dateRaw, typeRaw, topicRaw, locationRaw, teachersRaw) = validateGeneral(line, delimiter = delimiter).check(error = { return ParseResult.FailureParse(it) })
-        val date = parseDate(dateRaw).check(error = { return ParseResult.FailureParse(it) })
-        val type = parseType(typeRaw).check(error = { return ParseResult.FailureParse(it) })
+        val (dateRaw, typeRaw, topic, location, teachersRaw) = validateGeneral(line, delimiter = delimiter).check{
+            return ParseResult.FailureParse(it)
+        }
+        val date = parseDate(dateRaw).check {
+            return ParseResult.FailureParse(it)
+        }
+        val type = parseType(typeRaw).check {
+            return ParseResult.FailureParse(it)
+        }
+
+        val teachersList = teachersRaw.split(',')
+        if (type == SessionType.EXAM) {
+            val validTeachersCount = teachersList.count {
+                it.isNotBlank() && it.trim() != "-"
+            }
+
+            if (validTeachersCount < 2) {
+                return ParseResult.FailureParse(
+                    ParseError.InsufficientExamTeachers(validTeachersCount)
+                )
+            }
+        }
+
+        checkControlCharacters(topic, "topic").check { return ParseResult.FailureParse(it) }
+        checkControlCharacters(location, "location").check { return ParseResult.FailureParse(it) }
+        checkControlCharacters(teachersRaw, "teachers").check { return ParseResult.FailureParse(it) }
+
+        checkExternalWhitespaces(topic, "topic").check { return ParseResult.FailureParse(it) }
+        checkExternalWhitespaces(location, "location").check { return ParseResult.FailureParse(it) }
+        checkExternalWhitespaces(teachersRaw, "teachers").check { return ParseResult.FailureParse(it) }
+
+
         if (type == SessionType.CANCELLED) {
-            if (teachersRaw != "-") {
-                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(teachersRaw))
+            if (location != "-" || teachersRaw != "-") {
+                return ParseResult.FailureParse(
+                    ParseError.OthersViolation.InvalidCancelledField(
+                        if (location != "-") "location" else "teachers"
+                    )
+                )
             }
-            if (locationRaw != "-") {
-                return ParseResult.FailureParse(ParseError.OthersViolation.InvalidCancelledField(locationRaw))
-            }
-            val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
             return ParseResult.SuccessParse(Cancelled(date, topic))
         }
 
-        val teachers = parseTeachers(teachersRaw, type).check(error = { return ParseResult.FailureParse(it) })
-        val topic = validate(topicRaw).check(error = { return ParseResult.FailureParse(it) })
-        val location = validate(locationRaw, checkInvalid = true).check(error = { return ParseResult.FailureParse(it) })
+        if (location == "-") {
+            return ParseResult.FailureParse(
+                ParseError.OthersViolation.InvalidActiveLocation
+            )
+        }
+
+        val teachers = parseTeachers(teachersRaw).check {
+            return ParseResult.FailureParse(it)
+        }
 
         return try {
             val session = when (type) {
@@ -53,7 +88,7 @@ class Parser {
     }
     private fun validateGeneral(line: String, delimiter: Char) :ParseResult<List<String>> {
         if (delimiter !in line) {
-            return ParseResult.FailureParse(ParseError.MissingSeparator(line))
+            return ParseResult.FailureParse(ParseError.MissingSeparator)
         }
 
         val parts = line.split(delimiter)
@@ -73,11 +108,10 @@ class Parser {
 
     private fun parseDate(dateStr: String): ParseResult<LocalDate> {
         return try {
-            if (dateStr.startsWith("0000")) {
+            val parsedDate = LocalDate.parse(dateStr)
+            if (parsedDate.year !in 1..9999){
                 return ParseResult.FailureParse(ParseError.EmptyOrInvalidDate(dateStr))
             }
-            val parsedDate = LocalDate.parse(dateStr)
-
             return ParseResult.SuccessParse(parsedDate)
         } catch (e: Exception) {
             ParseResult.FailureParse(ParseError.EmptyOrInvalidDate(dateStr))
@@ -93,44 +127,29 @@ class Parser {
         return ParseResult.FailureParse(ParseError.UnknownSessionType(typeRaw))
     }
 
-    private fun parseTeachers(teachersRaw: String, sessionType: SessionType): ParseResult<List<String>> {
+    private fun parseTeachers(teachersRaw: String): ParseResult<List<String>> {
         val teachers = teachersRaw.split(',')
-        val validTeachersCount = teachers.count { it.isNotBlank() && it.trim() != "-"}
 
-        if (sessionType == SessionType.EXAM && (validTeachersCount < 2)) {
-                return ParseResult.FailureParse(ParseError.InsufficientExamTeachers(teachersRaw))
-        }
-        for (teacher in teachers){
-            if (teacher.any{it.isISOControl()}){
-                return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(teachersRaw))
-            }
-            if (teacher.isNotBlank() && teacher.trim() != teacher){
-                return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(teachersRaw))
-            }
-        }
-
-        if (validTeachersCount != teachers.size) {
-            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidTeacherName(teachersRaw))
+        if (teachers.any { it.isBlank() || it.trim() == "-" || (it.trim() != it) }) {
+            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidTeacherName)
         }
         if (teachers.toSet().size != teachers.size) {
-            return ParseResult.FailureParse(ParseError.OthersViolation.DuplicateTeachers(teachersRaw))
+            return ParseResult.FailureParse(ParseError.OthersViolation.DuplicateTeachers)
         }
 
         return ParseResult.SuccessParse(teachers)
     }
+    private fun checkControlCharacters(value: String, fieldName: String): ParseResult<Unit> {
+        if (value.any { it.isISOControl() }) {
+                return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(fieldName))
+        }
+        return ParseResult.SuccessParse(Unit)
+    }
 
-    private fun validate(valueRaw: String, checkInvalid: Boolean = false): ParseResult<String> {
-        if (valueRaw.any { it.isISOControl() }){
-            return ParseResult.FailureParse(ParseError.OthersViolation.ContainsControlCharacters(valueRaw))
+    private fun checkExternalWhitespaces(value: String, fieldName: String): ParseResult<Unit> {
+        if (value.trim() != value) {
+                return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(fieldName))
         }
-        if (valueRaw.trim() != valueRaw) {
-            return ParseResult.FailureParse(ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces(valueRaw))
-        }
-        if (checkInvalid && (valueRaw.isEmpty() || valueRaw == "-")) {
-            return ParseResult.FailureParse(ParseError.OthersViolation.InvalidActiveLocation(valueRaw))
-        }
-        return ParseResult.SuccessParse(valueRaw)
+        return ParseResult.SuccessParse(Unit)
     }
 }
-
-
