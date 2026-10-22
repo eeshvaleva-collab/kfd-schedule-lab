@@ -37,7 +37,7 @@ class AuditedSessionRepository(
 ) : SessionRepository by delegate {
     private var currentStats = Stats()
     val stats: Stats
-        get() = currentStats
+        get() = currentStats.copy(sessions = delegate.all().size)
     var auditLog: List<AuditEvent> = emptyList()
         private set
 

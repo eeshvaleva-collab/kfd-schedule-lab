@@ -16,7 +16,7 @@ fun escape(value: String): String {
 }
 
 sealed interface ParseError {
-    data class MissingSeparator(val rawValue: String) : ParseError
+    data object MissingSeparator : ParseError
     data class InvalidFieldCount(val rawValue: String) : ParseError
     data class EmptyValue(val rawValue: String) : ParseError
     data class EmptyOrInvalidDate(val rawValue: String) : ParseError
@@ -24,14 +24,13 @@ sealed interface ParseError {
     data class InsufficientExamTeachers(val teachersCount: Int) : ParseError
 
     sealed interface OthersViolation : ParseError {
-        data class ContainsControlCharacters(val rawValue: String) : OthersViolation
-        data class HasTrailingOrLeadingWhitespaces(val rawValue: String) : OthersViolation
-        data class InvalidCancelledField(val rawValue: String) : OthersViolation
-        data class InvalidActiveLocation(val rawValue: String) : OthersViolation
-        data class InvalidTeacherName(val rawValue: String) : OthersViolation
-        data class DuplicateTeachers(val rawValue: String) : OthersViolation
+        data class ContainsControlCharacters(val fieldName: String) : OthersViolation
+        data class HasTrailingOrLeadingWhitespaces(val fieldName: String) : OthersViolation
+        data class InvalidCancelledField(val fieldName: String) : OthersViolation
+        data object InvalidActiveLocation : OthersViolation
+        data object InvalidTeacherName : OthersViolation
+        data object DuplicateTeachers : OthersViolation
         data class DomainError(val rawValue: String) : OthersViolation
-        data class InsufficientActiveTeachers(val teachersCount: Int, val typeName: String) : ParseError
     }
 }
 
@@ -49,14 +48,11 @@ fun ParseError.logMessage(): String = when (this) {
     is ParseError.InsufficientExamTeachers -> {
         "type \"EXAM\" requires at least 2 teachers, got $teachersCount"
     }
-    is ParseError.OthersViolation.ContainsControlCharacters -> "value contains control characters"
-    is ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces -> "value has trailing or leading whitespaces"
-    is ParseError.OthersViolation.InvalidCancelledField -> "cancelled session location and teachers fields must be \"-\""
+    is ParseError.OthersViolation.ContainsControlCharacters -> "$fieldName value contains control characters"
+    is ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces -> "$fieldName value has trailing or leading whitespaces"
+    is ParseError.OthersViolation.InvalidCancelledField -> "cancelled session $fieldName field must be \"-\""
     is ParseError.OthersViolation.InvalidActiveLocation -> "active session location cannot be \"-\""
     is ParseError.OthersViolation.InvalidTeacherName -> "invalid teacher name"
     is ParseError.OthersViolation.DuplicateTeachers -> "teachers list contains duplicates"
-    is ParseError.OthersViolation.InsufficientActiveTeachers -> {
-        "type $typeName requires at least 2 teachers, got $teachersCount"
-    }
     is ParseError.OthersViolation.DomainError -> escape(this.rawValue)
 }
