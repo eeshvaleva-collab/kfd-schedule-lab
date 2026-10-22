@@ -7,7 +7,6 @@ sealed interface Session {
     val topic: String
     val sessionType: String
 
-    //System.err.println
     fun reschedule(newDate: LocalDate, now: LocalDate = LocalDate.now()): RescheduleResult<ActiveSession> = when {
         this !is ActiveSession -> RescheduleResult.Failure(RescheduleError.CancelledSession)
 
