@@ -38,7 +38,7 @@ fun runType(command: Command.ByType): Int {
         if (result is FileLineResult.Failure) {
             status = 1
         }
-        else if (result is FileLineResult.Success && result.session::class.simpleName?.uppercase() == command.type.name) {
+        else if (result is FileLineResult.Success && result.session.sessionType.name == command.type.name) {
             println(result.session.formString(showTeachers = true))
             totalLines++
         }
