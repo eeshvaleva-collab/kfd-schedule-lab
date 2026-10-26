@@ -5,7 +5,7 @@ import java.time.LocalDate
 sealed interface Session {
     val date: LocalDate
     val topic: String
-    val sessionType: String
+    val sessionType: SessionType
 
     //System.err.println
     fun reschedule(newDate: LocalDate, now: LocalDate = LocalDate.now()): RescheduleResult<ActiveSession> = when {
@@ -111,7 +111,7 @@ class Lecture private constructor(
     override val location: String,
     override val teachers: List<String>
 ) : BaseSession(), ActiveSession {
-    override val sessionType: String = "LECTURE"
+    override val sessionType: SessionType = SessionType.LECTURE
     override fun createRescheduledSession(newDate: LocalDate) =
         Lecture(newDate, topic, location, teachers)
 
@@ -130,7 +130,7 @@ class Practice private constructor(
     override val location: String,
     override val teachers: List<String>
 ) : BaseSession(), ActiveSession {
-    override val sessionType: String = "PRACTICE"
+    override val sessionType: SessionType = SessionType.PRACTICE
     override fun createRescheduledSession(newDate: LocalDate) =
         Practice(newDate, topic, location, teachers)
 
@@ -149,7 +149,7 @@ class Exam private constructor(
     override val location: String,
     override val teachers: List<String>
 ) : BaseSession(), ActiveSession {
-    override val sessionType: String = "EXAM"
+    override val sessionType: SessionType = SessionType.EXAM
     override fun createRescheduledSession(newDate: LocalDate) =
         Exam(newDate, topic, location, teachers)
 
@@ -166,7 +166,7 @@ class Cancelled private constructor(
     override val date: LocalDate,
     override val topic: String
 ) : BaseSession() {
-    override val sessionType: String = "CANCELLED"
+    override val sessionType: SessionType = SessionType.CANCELLED
 
     companion object {
         operator fun invoke(date: LocalDate, topic: String): Cancelled {
