@@ -139,10 +139,17 @@ class ParserValidationTest {
     }
 
     @Test
-    fun `should fail with invalid teacher name when list contains empty spaces between commas`() {
+    fun `should fail with trailing whitespace error when teachers list contains empty spaces between commas`() {
         val line = "2026-10-15|LECTURE|Valid Lecture|Room 401|Portnov, ,Sidorov"
         val result = parser.parse(line)
+        assertIs<ParseResult.FailureParse>(result)
+        assertIs<ParseError.OthersViolation.HasTrailingOrLeadingWhitespaces>(result.error)
+    }
 
+    @Test
+    fun `should fail with invalid teachers name when teachers name is - symbol`() {
+        val line = "2026-10-15|LECTURE|Valid Lecture|Room 401|Portnov,-,Sidorov"
+        val result = parser.parse(line)
         assertIs<ParseResult.FailureParse>(result)
         assertIs<ParseError.OthersViolation.InvalidTeacherName>(result.error)
     }

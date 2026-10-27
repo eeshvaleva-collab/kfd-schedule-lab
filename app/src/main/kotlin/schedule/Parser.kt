@@ -51,8 +51,9 @@ class Parser {
 
         checkExternalWhitespaces(topic, "topic").check { return ParseResult.FailureParse(it) }
         checkExternalWhitespaces(location, "location").check { return ParseResult.FailureParse(it) }
-        checkExternalWhitespaces(teachersRaw, "teachers").check { return ParseResult.FailureParse(it) }
-
+        for (teacher in teachersList){
+            checkExternalWhitespaces(teacher, "teachers").check { return ParseResult.FailureParse(it) }
+        }
 
         if (type == SessionType.CANCELLED) {
             if (location != "-" || teachersRaw != "-") {
@@ -71,7 +72,7 @@ class Parser {
             )
         }
 
-        val teachers = parseTeachers(teachersRaw).check {
+        val teachers = parseTeachers(teachersList).check {
             return ParseResult.FailureParse(it)
         }
 
@@ -127,9 +128,7 @@ class Parser {
         return ParseResult.FailureParse(ParseError.UnknownSessionType(typeRaw))
     }
 
-    private fun parseTeachers(teachersRaw: String): ParseResult<List<String>> {
-        val teachers = teachersRaw.split(',')
-
+    private fun parseTeachers(teachers: List<String>): ParseResult<List<String>> {
         if (teachers.any { it.isBlank() || it.trim() == "-" || (it.trim() != it) }) {
             return ParseResult.FailureParse(ParseError.OthersViolation.InvalidTeacherName)
         }

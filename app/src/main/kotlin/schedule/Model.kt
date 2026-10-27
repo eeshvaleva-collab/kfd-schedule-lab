@@ -54,27 +54,6 @@ sealed interface ActiveSession : Session {
     fun createRescheduledSession(newDate: LocalDate): ActiveSession
 }
 
-abstract class BaseSession : Session {
-    override fun equals(other: Any?): Boolean = when{
-        this === other -> true
-        other == null || other !is Session || this.sessionType != other.sessionType -> false
-        date != other.date || topic != other.topic -> false
-        this is ActiveSession && other is ActiveSession ->
-            location == other.location && teachers == other.teachers
-        else -> true
-    }
-
-    override fun hashCode(): Int {
-        var result = date.hashCode()
-        result = 31 * result + topic.hashCode()
-        if (this is ActiveSession) {
-            result = 31 * result + location.hashCode()
-            result = 31 * result + teachers.hashCode()
-        }
-        return result
-    }
-}
-
 internal object SessionRules {
     fun checkCommonConstraints(date: LocalDate, topic: String) {
         require(date.year in 1..9999) { "Year must be between 1 and 9999" }
@@ -109,7 +88,7 @@ class Lecture private constructor(
     override val topic: String,
     override val location: String,
     override val teachers: List<String>
-) : BaseSession(), ActiveSession {
+) : ActiveSession {
     override val sessionType: SessionType = SessionType.LECTURE
     override fun createRescheduledSession(newDate: LocalDate) =
         Lecture(newDate, topic, location, teachers)
@@ -128,7 +107,7 @@ class Practice private constructor(
     override val topic: String,
     override val location: String,
     override val teachers: List<String>
-) : BaseSession(), ActiveSession {
+) : ActiveSession {
     override val sessionType: SessionType = SessionType.PRACTICE
     override fun createRescheduledSession(newDate: LocalDate) =
         Practice(newDate, topic, location, teachers)
@@ -147,7 +126,7 @@ class Exam private constructor(
     override val topic: String,
     override val location: String,
     override val teachers: List<String>
-) : BaseSession(), ActiveSession {
+) : ActiveSession {
     override val sessionType: SessionType = SessionType.EXAM
     override fun createRescheduledSession(newDate: LocalDate) =
         Exam(newDate, topic, location, teachers)
@@ -164,7 +143,7 @@ class Exam private constructor(
 class Cancelled private constructor(
     override val date: LocalDate,
     override val topic: String
-) : BaseSession() {
+) : Session {
     override val sessionType: SessionType = SessionType.CANCELLED
 
     companion object {

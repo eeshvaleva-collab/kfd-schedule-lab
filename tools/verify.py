@@ -124,7 +124,8 @@ def verify(huge=False):
                 "2026-10-05|EXAM| Topic|Room 1|Ivanov,Ivanov",
                 "2026-13-45|SEMINAR|Topic|Room 1|Ivanov",
                 "2026-10-05|EXAM|Topic|Room 1|Ivanov",
-                "2026-10-05|EXAM|Topic|Room 1|Ivanov,-"
+                "2026-10-05|EXAM|Topic|Room 1|Ivanov,-",
+                "2026-10-05|LECTURE|Topic|-|Ivanov, Sidorov"
             ]
             my_dirty_file.write_bytes(("\n".join(dirty_records) + "\n").encode("utf-8"))
 
@@ -141,7 +142,8 @@ def verify(huge=False):
                 "line 10: invalid date \"2026-13-45\"\n"
                 "line 11: type \"EXAM\" requires at least 2 teachers, got 1\n"
                 "line 12: type \"EXAM\" requires at least 2 teachers, got 1\n"
-                "Rejected: 12 of 12\n"
+                "line 13: teachers field has trailing or leading whitespaces\n"
+                "Rejected: 13 of 13\n"
             ).encode("utf-8")
 
             execute("edge.errors", ["errors", "--file", str(my_dirty_file)],
